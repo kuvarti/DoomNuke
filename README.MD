@@ -1,6 +1,6 @@
 # Ecole 42 DoomNukem Project
 
-In process by:
+Team Members:
 - aeryilma
 - rtosun
 - fcil
