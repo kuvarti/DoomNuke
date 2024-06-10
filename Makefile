@@ -17,8 +17,7 @@ LIB_DIR = lib
 
 # Add new folders here
 # Yeni klasorleri buraya ekle
-SRC += $(wildcard $(SRC_DIR)/config/*.c)
-SRC += $(wildcard $(SRC_DIR)/*.c)
+SRC += $(shell find src -name "*.c")
 
 OBJ += $(SRC:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
@@ -29,16 +28,16 @@ NAME = doom-nukem
 UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S),Linux)
-    # Linux specific flags
-    LIB += -Wl,-rpath,$(PWD)/lib/sdl2/build
+	# Linux specific flags
+	LIB += -Wl,-rpath,$(PWD)/lib/sdl2/build
 else ifeq ($(UNAME_S),Darwin)
-    # macOS specific flags
-    LIB += -Wl,-rpath,@executable_path/lib/sdl2/build
+	# macOS specific flags
+	LIB += -Wl,-rpath,@executable_path/lib/sdl2/build
 endif
 
 CC += -g
 CFLAGS += -Wall -Wextra
-CFLAGS += -I $(INC_DIR) -I lib/libft -I lib/sdl2/include/SDL3 -I lib/sdl2/build/include/SDL3
+CFLAGS += -I $(INC_DIR) -I lib/libft -I lib/sdl2/include/SDL3 -I lib/sdl2/build/include/SDL3 -I lib/sdl2/include -I lib/sdl2/build/include
 
 all: $(OBJ_DIR) $(LIB) $(NAME)
 
@@ -47,7 +46,7 @@ $(OBJ_DIR):
 	@mkdir -p $@/config
 	@echo "$(MAGENTA)Object directories created..."
 
-$(LIB):
+$(LIB): sdl_init
 	@make -C lib/libft
 	@make -C lib/sdl2/build
 
@@ -77,9 +76,8 @@ clean:
 	@rm -rf $(NAME)
 	@echo "$(YELLOW)Object directory $(RED)DELETED"
 
-fclean: clean
+fclean: clean sdl_del
 	@make fclean -C lib/libft
-	@make clean -C lib/sdl2/build
 	@echo "$(YELLOW)$(NAME) $(RED)DELETED"
 
 re: fclean all
