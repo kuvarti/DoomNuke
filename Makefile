@@ -44,6 +44,7 @@ all: $(OBJ_DIR) $(LIB) $(NAME)
 $(OBJ_DIR):
 	@mkdir -p $@
 	@mkdir -p $@/config
+	@mkdir -p $@/Events
 	@echo "$(MAGENTA)Object directories created..."
 
 $(LIB): sdl_init
