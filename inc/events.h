@@ -13,7 +13,6 @@ typedef struct s_KeyPress
 } t_KeyPress;
 
 extern t_KeyPress g_tempKeypress;
-extern int running;
 // typedef struct s_
 
 int event_thread_func(void *);
