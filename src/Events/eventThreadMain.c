@@ -29,7 +29,7 @@ int event_thread_func(void* data) {
 		SDL_Delay(10);
 		if (!running){
 			ft_printf("ESC KEY PRESSED\nQUITTING...\n");
-			exit(1);
+			exit(0);
 		}
 	}
 	return 0;
