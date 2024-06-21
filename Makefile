@@ -61,7 +61,7 @@ $(LIB): sdl_init
 	@make -C lib/sdl2/build
 
 $(NAME): $(OBJS)
-	@$(CC) -o $(NAME) $(OBJS) $(LIB) 
+	@$(CC) -o $(NAME) $(OBJS) $(LIB) -lm
 	@echo "$(GREEN)Compiled { $(CYAN)$(NAME) $(GREEN)}$(RESET)"
 
 run: $(NAME)
