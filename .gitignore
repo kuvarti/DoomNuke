@@ -4,3 +4,4 @@
 *.so
 
 lib/sdl2
+.idea
