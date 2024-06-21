@@ -1,18 +1,22 @@
 #include "global.h"
+#include <sys/mman.h>
 
 #include "config.h"
 #include "libft.h"
 #include "events.h"
+#include "render.h"
 
-#include "SDL.h"
 #include "SDL_thread.h"
-#include "SDL_events.h"
+
+SDL_Surface *window_surface = NULL;
+SDL_Window *window = NULL;
 
 int main(int argc, char **argv)
 {
 	(void)argc;
 	(void)argv;
 	SDL_Thread *event_thread = NULL;
+	SDL_Thread *render_thread = NULL;
 
 	printf("Hello World!\n");
 	/* from libft.a */
@@ -26,8 +30,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	SDL_Window *window = SDL_CreateWindow("Shooter 01", 750, 500, 0);
-
+	window = SDL_CreateWindow("Shooter 01", WINDOW_WIDTH, WINDOW_HEIGHT, 0);
 	if (!window)
 	{
 		ft_putstr_fd("Failed to create window\n", STDERR_FILENO);
@@ -35,15 +38,17 @@ int main(int argc, char **argv)
 	}
 
 	event_thread = SDL_CreateThread(event_thread_func, "EventThread", NULL);
-	SDL_Surface *window_surface = SDL_GetWindowSurface(window);
+	render_thread = SDL_CreateThread(render_thread_func, "RenderThread", NULL);
 
-	if (!window_surface)
-	{
-		ft_putstr_fd("Failed to get the surface from the window\n", STDERR_FILENO);
-		return -1;
-	}
-
-	SDL_UpdateWindowSurface(window);
 	SDL_WaitThread(event_thread, NULL);
-	return (0);
+	SDL_WaitThread(render_thread, NULL);
+
+	// Destroy window
+	SDL_DestroyWindow(window);
+	window = NULL;
+
+	// Quit SDL subsystems
+	SDL_Quit();
+
+	return 0;
 }
