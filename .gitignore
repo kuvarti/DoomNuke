@@ -3,5 +3,6 @@
 *.a
 *.so
 
+obj
 lib/sdl2
 .idea
