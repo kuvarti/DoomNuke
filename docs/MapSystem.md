@@ -20,7 +20,7 @@ Map's created as segments.
   * Ending point x
   * Ending point y
   * portal, _if portal value is 0 it means wall have collision and u cannot pass through_
-  * transparency, 1 to 0
+  * transparency, 0 to 255
   * texture number
   ```txt
   [Wall]
