@@ -90,6 +90,13 @@ fclean: clean sdl_del
 	@make fclean -C lib/libft
 	@echo "$(YELLOW)$(NAME) $(RED)DELETED$(RESET)"
 
+sclean: clean
+	@make fclean -C lib/libft
+	@echo "$(YELLOW)$(NAME) $(RED)DELETED$(RESET)"
+
+
 re: fclean all
+
+sre: sclean all
 
 .PHONY: all clean fclean re sdl_reset sdl_del sdl_init run
