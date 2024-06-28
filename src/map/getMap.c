@@ -1,51 +1,13 @@
 #include "map.h"
 #include "global.h"
 
-void	initSurface(t_surface *s) {
-	(*s).height = 0;
-	(*s).placeholder = 0;
-	(*s).transparency = 0;
-}
+void	*getAndInitStruct(int number, size_t size, void (* initStruct)(void *)){
+	void	*ret = NULL;
+	int		i = -1;
 
-void	initSector(t_sector *s) {
-	(*s).sectorNo = 0;
-	(*s).walls = NULL;
-	(*s).wallCount = 0;
-	(*s).placeholder = 0;
-	initSurface(&((*s).Floor));
-	initSurface(&((*s).Ceiling));
-}
-
-void	init2dVector(t_2dVector *v) {
-	(*v).x = 0;
-	(*v).y = 0;
-}
-
-void	initWall(t_wall *w) {
-	init2dVector(&((*w).wallStart));
-	init2dVector(&((*w).wallEnd));
-	initSurface(&((*w).texture));
-	(*w).portal = 0;
-}
-
-t_wall		*getWall(int number) {
-	t_wall	*ret = NULL;
-	int i = -1;
-
-	ret = (t_wall *)malloc(sizeof(t_wall) * (number + 1));
+	ret = malloc(size * (number + 1));
 	while (++i <= number) {
-		initWall(&ret[i]);
-	}
-	return ret;
-}
-
-t_sector	*getSector(int number) {
-	t_sector	*ret = NULL;
-	int			i = -1;
-
-	ret = (t_sector *)malloc(sizeof(t_sector) * (number + 1));
-	while (++i <= number) {
-		initSector(&ret[i]);
+		initStruct((char *)ret + i * size);
 	}
 	return ret;
 }
@@ -57,13 +19,11 @@ char	*getFullText(int file) {
 		free(buf);
 	buf = get_next_line(file);
 	while (1) {
-		if (buf) {
-			ret = ft_gnl_strjoin(ret, buf);
-			free(buf);
-		} else {
-			break;
-		}
+		ret = ft_gnl_strjoin(ret, buf);
+		free(buf);
 		buf = get_next_line(file);
+		if (!buf)
+			break;
 	}
 	return (ret);
 }
@@ -73,7 +33,9 @@ t_wall	*parseWalls(char **mapLines, int cursor, int len) {
 	char	**line;
 	int		wallCursor, tmp = cursor - 1;
 
-	ret = getWall(len);
+	ret = (t_wall *)getAndInitStruct(len, sizeof(t_wall), &initWall);
+	if (!ret)
+		return (ft_printf("Some errors occurred while initializing Walls.") ? NULL: NULL);
 	while ((++tmp - cursor) < len) {
 		wallCursor = tmp - cursor;
 		line = ft_split(mapLines[tmp], ' ');
@@ -89,7 +51,7 @@ t_wall	*parseWalls(char **mapLines, int cursor, int len) {
 	return (ret);
 }
 
-t_sector	*parseSector(char **mapLines) {
+int	parseSector(char **mapLines) {
 	int		i = -1, tmp = 0;
 	int		sectorCursor = 0, wallCount;
 	char	**line;
@@ -102,7 +64,10 @@ t_sector	*parseSector(char **mapLines) {
 			break;
 		}
 	}
-	gameEnv.map.sector = getSector(i - tmp);
+	gameEnv.map.sector = (t_sector *)getAndInitStruct(i - tmp, sizeof(t_sector), &initSector);
+	if (!gameEnv.map.sector) {
+		return (!ft_printf("Some errors occurred while initializing Sectors."));
+	}
 	while (1) {
 		line = ft_split(mapLines[tmp++], ' ');
 		wallCount = ft_atoi(line[2]);
@@ -111,6 +76,10 @@ t_sector	*parseSector(char **mapLines) {
 		gameEnv.map.sector[sectorCursor].Floor.height = atof(line[3]);
 		gameEnv.map.sector[sectorCursor].Ceiling.height = atof(line[5]);
 		gameEnv.map.sector[sectorCursor].walls = parseWalls(mapLines, (i + 1) + ft_atoi(line[1]), wallCount);
+		if (wallCount != 0 && gameEnv.map.sector[sectorCursor].walls == NULL) 
+			ft_printf("Some errors occurred while parsing %d. sector walls. The program will denied error and continue.", gameEnv.map.sector[sectorCursor].sectorNo);
+		else if (wallCount > 0 && gameEnv.map.sector[sectorCursor].walls == NULL)
+			return 0;
 		if (tmp == i)
 			break;
 		else
@@ -119,20 +88,26 @@ t_sector	*parseSector(char **mapLines) {
 	}
 	if (line)
 		ft_freesplit(line);
+	return 1;
 }
 
 int   getMap(char *file)
 {
-	t_map	mapRet;
-	char	*txt, **lines;
+	char	*fileText, **lines;
 	int fd = open(file, O_RDONLY);
 
 	if (fd < 0) {
 		return (!ft_printf("File Not Found :%s\n", file));
 	}
-	lines = ft_split(getFullText(fd), '\n');
+	fileText = getFullText(fd);
+	lines = ft_split(fileText, '\n');
+	free(fileText);
+	if (!lines) {
+		return (!ft_printf("Some errors occurred during reading file."));
+	}
 	close(fd);
-	parseSector(lines);
+	if (!parseSector(lines))
+		return (!ft_printf("Map is not properly parsed."));
 	ft_freesplit(lines);
 	return 1;
 }
