@@ -48,4 +48,47 @@ Map's created as segments.
 ![exampleMap](./img/ExampleMap.svg)\
 | a sample map created with the examples above
 # Code Structure
-| gonna be filled
+Map stored with arrays for easy access. We have Sector, Wall, Surface and 2dVector.
+
+Sectors is in the Map variable on global gameEnv, and storeas as an array. Eveything is in the sector stored this struct. Walls, SectorId(`sectorNo`) etc...
+```c
+typedef	struct s_sector {
+	int			sectorNo;
+	t_wall		*walls;
+	int			wallCount;
+	t_surface	Floor;
+	t_surface	Ceiling;
+	int			placeholder;	//! need item system
+}	t_sector;
+
+typedef struct s_map{
+	t_sector	*sector;
+}	t_map;
+
+// For Example: Access the sectorNo on sector 3
+t_map.Sector[2].sectorNo;
+```
+
+Walls is in the Sector struct and stored as array too for same reason. Wall has 2 vector for start and end point locations, Surface for the texture and portal for the tell program what is behind this wall.
+```c
+typedef struct s_wall {
+	t_2dVector	wallStart;
+	t_2dVector	wallEnd;
+	t_surface	texture;
+	int			portal;
+}	t_wall;
+
+// For Example: Access the wallStart second wall's x location on sector 2
+t_map.Sector[1].wallStart.x;
+```
+
+Surface is store plane's transparency, texture number and height for sector's.
+```c
+typedef	struct s_surface {
+	unsigned char	transparency;	//* Value used for 0-255
+	int				placeholder;	//! need texture system for here
+	float			height;
+}	t_surface;
+```
+
+Click link to learn about [2dVector](./commonStructures.md#2dVector).

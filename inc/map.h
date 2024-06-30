@@ -51,4 +51,8 @@ typedef struct s_map{
 	t_sector	*sector;
 }	t_map;
 
-int   getMap(char *file);
+int   	getMap(char *file);
+void	init2dVector(void *p);
+void	initSurface(void *p);
+void	initSector(void *p);
+void	initWall(void *p);
