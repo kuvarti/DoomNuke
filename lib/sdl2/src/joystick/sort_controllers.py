@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 #
-# Script to sort the game controller database entries in SDL_gamepad.c
+# Script to sort the game controller database entries in SDL_gamecontroller.c
 
 import re
 
 
-filename = "SDL_gamepad_db.h"
+filename = "SDL_gamecontrollerdb.h"
 input = open(filename)
 output = open(f"{filename}.new", "w")
 parsing_controllers = False
@@ -80,14 +80,6 @@ def save_controller(line):
         if (vid_value, pid_value, crc_value) in invalid_controllers:
             print("Controller '%s' not unique, skipping" % name)
             return
-
-    pos = find_element("type", bindings)
-    if pos >= 0:
-        bindings.insert(0, bindings.pop(pos))
-
-    pos = find_element("platform", bindings)
-    if pos >= 0:
-        bindings.insert(0, bindings.pop(pos))
 
     pos = find_element("sdk", bindings)
     if pos >= 0:

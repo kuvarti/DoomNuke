@@ -19,12 +19,13 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 #ifdef SDL_THREAD_WINDOWS
 
 #include "../../core/windows/SDL_windows.h"
 
+#include "SDL_thread.h"
 #include "../SDL_thread_c.h"
 
 #if WINAPI_FAMILY_WINRT
@@ -46,7 +47,7 @@ SDL_TLSData *SDL_SYS_GetTLSData(void)
 {
     if (thread_local_storage == TLS_OUT_OF_INDEXES && !generic_local_storage) {
         static SDL_SpinLock lock;
-        SDL_LockSpinlock(&lock);
+        SDL_AtomicLock(&lock);
         if (thread_local_storage == TLS_OUT_OF_INDEXES && !generic_local_storage) {
             DWORD storage = TlsAlloc();
             if (storage != TLS_OUT_OF_INDEXES) {
@@ -56,7 +57,7 @@ SDL_TLSData *SDL_SYS_GetTLSData(void)
                 generic_local_storage = SDL_TRUE;
             }
         }
-        SDL_UnlockSpinlock(&lock);
+        SDL_AtomicUnlock(&lock);
     }
     if (generic_local_storage) {
         return SDL_Generic_GetTLSData();
@@ -77,3 +78,5 @@ int SDL_SYS_SetTLSData(SDL_TLSData *data)
 }
 
 #endif /* SDL_THREAD_WINDOWS */
+
+/* vi: set ts=4 sw=4 expandtab: */

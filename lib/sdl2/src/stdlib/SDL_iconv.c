@@ -18,9 +18,17 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+
+#if defined(__clang_analyzer__) && !defined(SDL_DISABLE_ANALYZE_MACROS)
+#define SDL_DISABLE_ANALYZE_MACROS 1
+#endif
+
+#include "../SDL_internal.h"
 
 /* This file contains portable iconv functions for SDL */
+
+#include "SDL_stdinc.h"
+#include "SDL_endian.h"
 
 #if defined(HAVE_ICONV) && defined(HAVE_ICONV_H)
 #ifndef SDL_USE_LIBICONV
@@ -104,7 +112,7 @@ enum
 #define ENCODING_UCS4NATIVE  ENCODING_UCS4LE
 #endif
 
-struct SDL_iconv_data_t
+struct _SDL_iconv_t
 {
     int src_fmt;
     int dst_fmt;
@@ -120,7 +128,7 @@ static struct
     { "US-ASCII", ENCODING_ASCII },
     { "8859-1", ENCODING_LATIN1 },
     { "ISO-8859-1", ENCODING_LATIN1 },
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_OS2) || defined(SDL_PLATFORM_GDK)
+#if defined(__WIN32__) || defined(__OS2__) || defined(__GDK__)
     { "WCHAR_T", ENCODING_UTF16LE },
 #else
     { "WCHAR_T", ENCODING_UCS4NATIVE },
@@ -225,7 +233,8 @@ SDL_iconv_t SDL_iconv_open(const char *tocode, const char *fromcode)
     return (SDL_iconv_t)-1;
 }
 
-size_t SDL_iconv(SDL_iconv_t cd,
+size_t
+SDL_iconv(SDL_iconv_t cd,
           const char **inbuf, size_t *inbytesleft,
           char **outbuf, size_t *outbytesleft)
 {
@@ -848,3 +857,5 @@ char *SDL_iconv_string(const char *tocode, const char *fromcode, const char *inb
 
     return string;
 }
+
+/* vi: set ts=4 sw=4 expandtab: */

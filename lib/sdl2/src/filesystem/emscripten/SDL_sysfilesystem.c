@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 #ifdef SDL_FILESYSTEM_EMSCRIPTEN
 
@@ -26,6 +26,9 @@
 /* System dependent filesystem routines                                */
 #include <errno.h>
 #include <sys/stat.h>
+
+#include "SDL_error.h"
+#include "SDL_filesystem.h"
 
 #include <emscripten/emscripten.h>
 
@@ -53,6 +56,7 @@ char *SDL_GetPrefPath(const char *org, const char *app)
     len = SDL_strlen(append) + SDL_strlen(org) + SDL_strlen(app) + 3;
     retval = (char *)SDL_malloc(len);
     if (!retval) {
+        SDL_OutOfMemory();
         return NULL;
     }
 
@@ -82,33 +86,6 @@ char *SDL_GetPrefPath(const char *org, const char *app)
     return retval;
 }
 
-char *SDL_GetUserFolder(SDL_Folder folder)
-{
-    const char *home = NULL;
-
-    if (folder != SDL_FOLDER_HOME) {
-        SDL_SetError("Emscripten only supports the home folder");
-        return NULL;
-    }
-
-    home = SDL_getenv("HOME");
-    if (!home) {
-        SDL_SetError("No $HOME environment variable available");
-        return NULL;
-    }
-
-    char *retval = SDL_malloc(SDL_strlen(home) + 2);
-    if (!retval) {
-        return NULL;
-    }
-
-    if (SDL_snprintf(retval, SDL_strlen(home) + 2, "%s/", home) < 0) {
-        SDL_SetError("Couldn't snprintf home path for Emscripten: %s", home);
-        SDL_free(retval);
-        return NULL;
-    }
-
-    return retval;
-}
-
 #endif /* SDL_FILESYSTEM_EMSCRIPTEN */
+
+/* vi: set ts=4 sw=4 expandtab: */

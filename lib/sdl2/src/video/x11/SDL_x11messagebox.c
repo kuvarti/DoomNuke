@@ -19,10 +19,11 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 #ifdef SDL_VIDEO_DRIVER_X11
 
+#include "SDL.h"
 #include "SDL_x11video.h"
 #include "SDL_x11dyn.h"
 #include "SDL_x11messagebox.h"
@@ -101,7 +102,7 @@ typedef struct SDL_MessageBoxDataX11
     int text_height;          /* Height for text lines. */
     TextLineData *linedata;
 
-    int *pbuttonid; /* Pointer to user return buttonID value. */
+    int *pbuttonid; /* Pointer to user return buttonid value. */
 
     int button_press_index; /* Index into buttondata/buttonpos for button which is pressed (or -1). */
     int mouse_over_index;   /* Index into buttondata/buttonpos for button mouse is over (or -1). */
@@ -245,7 +246,7 @@ static int X11_MessageBoxInitPositions(SDL_MessageBoxDataX11 *data)
         TextLineData *plinedata = (TextLineData *)SDL_malloc(sizeof(TextLineData) * linecount);
 
         if (!plinedata) {
-            return -1;
+            return SDL_OutOfMemory();
         }
 
         data->linedata = plinedata;
@@ -403,8 +404,9 @@ static int X11_MessageBoxCreateWindow(SDL_MessageBoxDataX11 *data)
     const SDL_MessageBoxData *messageboxdata = data->messageboxdata;
 
     if (messageboxdata->window) {
-        SDL_DisplayData *displaydata = SDL_GetDisplayDriverDataForWindow(messageboxdata->window);
-        windowdata = messageboxdata->window->driverdata;
+        SDL_DisplayData *displaydata =
+            (SDL_DisplayData *)SDL_GetDisplayForWindow(messageboxdata->window)->driverdata;
+        windowdata = (SDL_WindowData *)messageboxdata->window->driverdata;
         data->screen = displaydata->screen;
     } else {
         data->screen = DefaultScreen(display);
@@ -467,11 +469,11 @@ static int X11_MessageBoxCreateWindow(SDL_MessageBoxDataX11 *data)
         X11_XTranslateCoordinates(display, windowdata->xwindow, RootWindow(display, data->screen), x, y, &x, &y, &dummy);
     } else {
         const SDL_VideoDevice *dev = SDL_GetVideoDevice();
-        if (dev && dev->displays && dev->num_displays > 0) {
-            const SDL_VideoDisplay *dpy = dev->displays[0];
-            const SDL_DisplayData *dpydata = dpy->driverdata;
-            x = dpydata->x + ((dpy->current_mode->w - data->dialog_width) / 2);
-            y = dpydata->y + ((dpy->current_mode->h - data->dialog_height) / 3);
+        if ((dev) && (dev->displays) && (dev->num_displays > 0)) {
+            const SDL_VideoDisplay *dpy = &dev->displays[0];
+            const SDL_DisplayData *dpydata = (SDL_DisplayData *)dpy->driverdata;
+            x = dpydata->x + ((dpy->current_mode.w - data->dialog_width) / 2);
+            y = dpydata->y + ((dpy->current_mode.h - data->dialog_height) / 3);
         } else { /* oh well. This will misposition on a multi-head setup. Init first next time. */
             x = (DisplayWidth(display, data->screen) - data->dialog_width) / 2;
             y = (DisplayHeight(display, data->screen) - data->dialog_height) / 3;
@@ -701,7 +703,7 @@ static int X11_MessageBoxLoop(SDL_MessageBoxDataX11 *data)
                     SDL_MessageBoxButtonDataX11 *buttondatax11 = &data->buttonpos[i];
 
                     if (buttondatax11->buttondata->flags & mask) {
-                        *data->pbuttonid = buttondatax11->buttondata->buttonID;
+                        *data->pbuttonid = buttondatax11->buttondata->buttonid;
                         close_dialog = SDL_TRUE;
                         break;
                     }
@@ -726,7 +728,7 @@ static int X11_MessageBoxLoop(SDL_MessageBoxDataX11 *data)
                 if (data->button_press_index == button) {
                     SDL_MessageBoxButtonDataX11 *buttondatax11 = &data->buttonpos[button];
 
-                    *data->pbuttonid = buttondatax11->buttondata->buttonID;
+                    *data->pbuttonid = buttondatax11->buttondata->buttonid;
                     close_dialog = SDL_TRUE;
                 }
             }
@@ -744,7 +746,7 @@ static int X11_MessageBoxLoop(SDL_MessageBoxDataX11 *data)
     return 0;
 }
 
-static int X11_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, int *buttonID)
+static int X11_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, int *buttonid)
 {
     int ret;
     SDL_MessageBoxDataX11 data;
@@ -763,7 +765,7 @@ static int X11_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, int 
     if (origlocale) {
         origlocale = SDL_strdup(origlocale);
         if (!origlocale) {
-            return -1;
+            return SDL_OutOfMemory();
         }
         (void)setlocale(LC_ALL, "");
     }
@@ -772,11 +774,11 @@ static int X11_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, int 
     /* This code could get called from multiple threads maybe? */
     X11_XInitThreads();
 
-    /* Initialize the return buttonID value to -1 (for error or dialogbox closed). */
-    *buttonID = -1;
+    /* Initialize the return buttonid value to -1 (for error or dialogbox closed). */
+    *buttonid = -1;
 
     /* Init and display the message box. */
-    ret = X11_MessageBoxInit(&data, messageboxdata, buttonID);
+    ret = X11_MessageBoxInit(&data, messageboxdata, buttonid);
     if (ret != -1) {
         ret = X11_MessageBoxInitPositions(&data);
         if (ret != -1) {
@@ -800,7 +802,7 @@ static int X11_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, int 
 }
 
 /* Display an x11 message box. */
-int X11_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
+int X11_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
 {
 #if SDL_FORK_MESSAGEBOX
     /* Use a child process to protect against setlocale(). Annoying. */
@@ -809,21 +811,21 @@ int X11_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
     int status = 0;
 
     if (pipe(fds) == -1) {
-        return X11_ShowMessageBoxImpl(messageboxdata, buttonID); /* oh well. */
+        return X11_ShowMessageBoxImpl(messageboxdata, buttonid); /* oh well. */
     }
 
     pid = fork();
     if (pid == -1) { /* failed */
         close(fds[0]);
         close(fds[1]);
-        return X11_ShowMessageBoxImpl(messageboxdata, buttonID); /* oh well. */
+        return X11_ShowMessageBoxImpl(messageboxdata, buttonid); /* oh well. */
     } else if (pid == 0) {                                       /* we're the child */
         int exitcode = 0;
         close(fds[0]);
-        status = X11_ShowMessageBoxImpl(messageboxdata, buttonID);
+        status = X11_ShowMessageBoxImpl(messageboxdata, buttonid);
         if (write(fds[1], &status, sizeof(int)) != sizeof(int)) {
             exitcode = 1;
-        } else if (write(fds[1], buttonID, sizeof(int)) != sizeof(int)) {
+        } else if (write(fds[1], buttonid, sizeof(int)) != sizeof(int)) {
             exitcode = 1;
         }
         close(fds[1]);
@@ -840,16 +842,18 @@ int X11_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
         if ((rc == -1) || (!WIFEXITED(status)) || (WEXITSTATUS(status) != 0)) {
             status = SDL_SetError("msgbox child process failed");
         } else if ((read(fds[0], &status, sizeof(int)) != sizeof(int)) ||
-                   (read(fds[0], buttonID, sizeof(int)) != sizeof(int))) {
+                   (read(fds[0], buttonid, sizeof(int)) != sizeof(int))) {
             status = SDL_SetError("read from msgbox child process failed");
-            *buttonID = 0;
+            *buttonid = 0;
         }
         close(fds[0]);
 
         return status;
     }
 #else
-    return X11_ShowMessageBoxImpl(messageboxdata, buttonID);
+    return X11_ShowMessageBoxImpl(messageboxdata, buttonid);
 #endif
 }
 #endif /* SDL_VIDEO_DRIVER_X11 */
+
+/* vi: set ts=4 sw=4 expandtab: */

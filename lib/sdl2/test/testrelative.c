@@ -12,43 +12,40 @@
 
 /* Simple program:  Test relative mouse motion */
 
-#include <SDL3/SDL_test_common.h>
-#include <SDL3/SDL_main.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
 
-#ifdef SDL_PLATFORM_EMSCRIPTEN
+#include "SDL_test_common.h"
+
+#ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
 
-#include <stdlib.h>
-#include <time.h>
-
 static SDLTest_CommonState *state;
-static int i, done;
-static float mouseX, mouseY;
-static SDL_FRect rect;
-static SDL_Event event;
+int i, done;
+SDL_Rect rect;
+SDL_Event event;
 
-static void DrawRects(SDL_Renderer *renderer)
+static void
+DrawRects(SDL_Renderer *renderer)
 {
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    rect.x = mouseX;
-    rect.y = mouseY;
     SDL_RenderFillRect(renderer, &rect);
 }
 
-static void loop(void)
+static void
+loop()
 {
     /* Check for events */
     while (SDL_PollEvent(&event)) {
         SDLTest_CommonEvent(state, &event, &done);
         switch (event.type) {
-        case SDL_EVENT_MOUSE_MOTION:
+        case SDL_MOUSEMOTION:
         {
-            mouseX += event.motion.xrel;
-            mouseY += event.motion.yrel;
+            rect.x += event.motion.xrel;
+            rect.y += event.motion.yrel;
         } break;
-        default:
-            break;
         }
     }
     for (i = 0; i < state->num_windows; ++i) {
@@ -61,7 +58,7 @@ static void loop(void)
         SDL_RenderClear(renderer);
 
         /* Wrap the cursor rectangle at the screen edges to keep it visible */
-        SDL_GetRenderViewport(renderer, &viewport);
+        SDL_RenderGetViewport(renderer, &viewport);
         if (rect.x < viewport.x) {
             rect.x += viewport.w;
         }
@@ -79,7 +76,7 @@ static void loop(void)
 
         SDL_RenderPresent(renderer);
     }
-#ifdef SDL_PLATFORM_EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
     if (done) {
         emscripten_cancel_main_loop();
     }
@@ -90,19 +87,16 @@ int main(int argc, char *argv[])
 {
 
     /* Enable standard application logging */
-    SDL_SetLogPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
     if (!state) {
         return 1;
     }
-
-    /* Parse commandline */
-    if (!SDLTest_CommonDefaultArgs(state, argc, argv)) {
-        return 1;
+    for (i = 1; i < argc; ++i) {
+        SDLTest_CommonArg(state, i);
     }
-
     if (!SDLTest_CommonInit(state)) {
         return 2;
     }
@@ -126,7 +120,7 @@ int main(int argc, char *argv[])
     rect.h = 10;
     /* Main render loop */
     done = 0;
-#ifdef SDL_PLATFORM_EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
     emscripten_set_main_loop(loop, 0, 1);
 #else
     while (!done) {
@@ -136,3 +130,5 @@ int main(int argc, char *argv[])
     SDLTest_CommonQuit(state);
     return 0;
 }
+
+/* vi: set ts=4 sw=4 expandtab: */

@@ -19,10 +19,12 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "SDL_internal.h"
+#include "../SDL_internal.h"
 
 #ifndef SDL_syshaptic_h_
 #define SDL_syshaptic_h_
+
+#include "SDL_haptic.h"
 
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
@@ -38,25 +40,22 @@ struct haptic_effect
 /*
  * The real SDL_Haptic struct.
  */
-struct SDL_Haptic
+struct _SDL_Haptic
 {
-    const void *magic;
+    Uint8 index; /* Stores index it is attached to */
 
-    SDL_HapticID instance_id;       /* Device instance, monotonically increasing from 0 */
-    char *name;                     /* Device name - system dependent */
+    struct haptic_effect *effects; /* Allocated effects */
+    int neffects;                  /* Maximum amount of effects */
+    int nplaying;                  /* Maximum amount of effects to play at the same time */
+    unsigned int supported;        /* Supported effects */
+    int naxes;                     /* Number of axes on the device. */
 
-    struct haptic_effect *effects;  /* Allocated effects */
-    int neffects;                   /* Maximum amount of effects */
-    int nplaying;                   /* Maximum amount of effects to play at the same time */
-    Uint32 supported;               /* Supported effects and features */
-    int naxes;                      /* Number of axes on the device. */
-
-    struct haptic_hwdata *hwdata;   /* Driver dependent */
-    int ref_count;                  /* Count for multiple opens */
+    struct haptic_hwdata *hwdata; /* Driver dependent */
+    int ref_count;                /* Count for multiple opens */
 
     int rumble_id;                  /* ID of rumble effect for simple rumble API. */
     SDL_HapticEffect rumble_effect; /* Rumble effect. */
-    struct SDL_Haptic *next;        /* pointer to next haptic we have allocated */
+    struct _SDL_Haptic *next;       /* pointer to next haptic we have allocated */
 };
 
 /*
@@ -68,11 +67,6 @@ extern int SDL_SYS_HapticInit(void);
 
 /* Function to return the number of haptic devices plugged in right now */
 extern int SDL_SYS_NumHaptics(void);
-
-/*
- * Gets the instance ID of the haptic device
- */
-extern SDL_HapticID SDL_SYS_HapticInstanceID(int index);
 
 /*
  * Gets the device dependent name of the haptic device
@@ -134,7 +128,7 @@ extern void SDL_SYS_HapticQuit(void);
  */
 extern int SDL_SYS_HapticNewEffect(SDL_Haptic *haptic,
                                    struct haptic_effect *effect,
-                                   const SDL_HapticEffect *base);
+                                   SDL_HapticEffect *base);
 
 /*
  * Updates the haptic effect on the haptic device using data
@@ -144,7 +138,7 @@ extern int SDL_SYS_HapticNewEffect(SDL_Haptic *haptic,
  */
 extern int SDL_SYS_HapticUpdateEffect(SDL_Haptic *haptic,
                                       struct haptic_effect *effect,
-                                      const SDL_HapticEffect *data);
+                                      SDL_HapticEffect *data);
 
 /*
  * Runs the effect on the haptic device.
@@ -219,3 +213,5 @@ extern int SDL_SYS_HapticStopAll(SDL_Haptic *haptic);
 #endif
 
 #endif /* SDL_syshaptic_h_ */
+
+/* vi: set ts=4 sw=4 expandtab: */

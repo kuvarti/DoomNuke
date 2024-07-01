@@ -18,16 +18,16 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* System dependent filesystem routines                                */
 
 #include "../../core/windows/SDL_windows.h"
-#include <SDL3/SDL_hints.h>
-#include <SDL3/SDL_system.h>
-#include <SDL3/SDL_filesystem.h>
+#include "SDL_hints.h"
+#include "SDL_system.h"
+#include "SDL_filesystem.h"
 #include <XGameSaveFiles.h>
 
 char *
@@ -45,6 +45,7 @@ SDL_GetBasePath(void)
         void *ptr = SDL_realloc(path, buflen * sizeof(CHAR));
         if (!ptr) {
             SDL_free(path);
+            SDL_OutOfMemory();
             return NULL;
         }
 

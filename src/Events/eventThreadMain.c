@@ -18,11 +18,11 @@ int event_thread_func(void* data) {
 	temp_KeyPressInit();
 	while (running) {
 		while (SDL_PollEvent(&event)) {
-			if (event.type == SDL_EVENT_QUIT) {
+			if (event.type == SDL_QUIT) {
 				running = 0;
-			} else if (event.type == SDL_EVENT_KEY_DOWN) {
+			} else if (event.type == SDL_KEYDOWN) {
 				keyEventKeyDown(event.key.keysym.sym);
-			} else if (event.type == SDL_EVENT_KEY_UP) {
+			} else if (event.type == SDL_KEYUP) {
 				keyEventKeyUp(event.key.keysym.sym);
 			}
 		}

@@ -18,10 +18,14 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 extern "C" {
+#include "SDL_system.h"
 #include "../windows/SDL_windows.h"
+#include "SDL_messagebox.h"
+#include "SDL_main.h"
+#include "SDL_events.h"
 #include "../../events/SDL_events_c.h"
 }
 #include <XGameRuntime.h>
@@ -35,8 +39,8 @@ PAPPSTATE_REGISTRATION hPLM = {};
 PAPPCONSTRAIN_REGISTRATION hCPLM = {};
 HANDLE plmSuspendComplete = nullptr;
 
-extern "C"
-int SDL_GDKGetTaskQueue(XTaskQueueHandle *outTaskQueue)
+extern "C" DECLSPEC int
+SDL_GDKGetTaskQueue(XTaskQueueHandle *outTaskQueue)
 {
     /* If this is the first call, first create the global task queue. */
     if (!GDK_GlobalTaskQueue) {
@@ -61,8 +65,8 @@ int SDL_GDKGetTaskQueue(XTaskQueueHandle *outTaskQueue)
     return 0;
 }
 
-extern "C"
-void GDK_DispatchTaskQueue(void)
+extern "C" void
+GDK_DispatchTaskQueue(void)
 {
     /* If there is no global task queue, don't do anything.
      * This gives the option to opt-out for those who want to handle everything themselves.
@@ -75,7 +79,8 @@ void GDK_DispatchTaskQueue(void)
 }
 
 /* Pop up an out of memory message, returns to Windows */
-static BOOL OutOfMemory(void)
+extern "C" static BOOL
+OutOfMemory(void)
 {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fatal Error", "Out of memory - aborting", NULL);
     return FALSE;
@@ -83,8 +88,8 @@ static BOOL OutOfMemory(void)
 
 /* Gets the arguments with GetCommandLine, converts them to argc and argv
    and calls SDL_main */
-extern "C"
-int SDL_RunApp(int, char**, SDL_main_func mainFunction, void *reserved)
+extern "C" DECLSPEC int
+SDL_GDKRunApp(SDL_main_func mainFunction, void *reserved)
 {
     LPWSTR *argvw;
     char **argv;
@@ -108,21 +113,18 @@ int SDL_RunApp(int, char**, SDL_main_func mainFunction, void *reserved)
         return OutOfMemory();
     }
     for (i = 0; i < argc; ++i) {
-        const int utf8size = WideCharToMultiByte(CP_UTF8, 0, argvw[i], -1, NULL, 0, NULL, NULL);
-        if (!utf8size) {  // uhoh?
-            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fatal Error", "Error processing command line arguments", NULL);
-            return -1;
+        DWORD len;
+        char *arg = WIN_StringToUTF8W(argvw[i]);
+        if (arg == NULL) {
+            return OutOfMemory();
         }
-
-        argv[i] = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, utf8size);  // this size includes the null-terminator character.
+        len = (DWORD)SDL_strlen(arg);
+        argv[i] = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, len + 1);
         if (!argv[i]) {
             return OutOfMemory();
         }
-
-        if (WideCharToMultiByte(CP_UTF8, 0, argvw[i], -1, argv[i], utf8size, NULL, NULL) == 0) {  // failed? uhoh!
-            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fatal Error", "Error processing command line arguments", NULL);
-            return -1;
-        }
+        SDL_memcpy(argv[i], arg, len);
+        SDL_free(arg);
     }
     argv[i] = NULL;
     LocalFree(argvw);
@@ -160,7 +162,7 @@ int SDL_RunApp(int, char**, SDL_main_func mainFunction, void *reserved)
             SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION, "[GDK] in RegisterAppStateChangeNotification handler");
             if (quiesced) {
                 ResetEvent(plmSuspendComplete);
-                SDL_SendAppEvent(SDL_EVENT_DID_ENTER_BACKGROUND);
+                SDL_SendAppEvent(SDL_APP_DIDENTERBACKGROUND);
 
                 // To defer suspension, we must wait to exit this callback.
                 // IMPORTANT: The app must call SDL_GDKSuspendComplete() to release this lock.
@@ -168,7 +170,7 @@ int SDL_RunApp(int, char**, SDL_main_func mainFunction, void *reserved)
 
                 SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION, "[GDK] in RegisterAppStateChangeNotification handler: plmSuspendComplete event signaled.");
             } else {
-                SDL_SendAppEvent(SDL_EVENT_WILL_ENTER_FOREGROUND);
+                SDL_SendAppEvent(SDL_APP_WILLENTERFOREGROUND);
             }
         };
         if (RegisterAppStateChangeNotification(rascn, NULL, &hPLM)) {
@@ -213,7 +215,7 @@ int SDL_RunApp(int, char**, SDL_main_func mainFunction, void *reserved)
 
         XGameRuntimeUninitialize();
     } else {
-#ifdef SDL_PLATFORM_WINGDK
+#ifdef __WINGDK__
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fatal Error", "[GDK] Could not initialize - aborting", NULL);
 #else
         SDL_assert_always(0 && "[GDK] Could not initialize - aborting");
@@ -230,16 +232,16 @@ int SDL_RunApp(int, char**, SDL_main_func mainFunction, void *reserved)
     return result;
 }
 
-extern "C"
-void SDL_GDKSuspendComplete()
+extern "C" DECLSPEC void
+SDL_GDKSuspendComplete()
 {
     if (plmSuspendComplete) {
         SetEvent(plmSuspendComplete);
     }
 }
 
-extern "C"
-int SDL_GDKGetDefaultUser(XUserHandle *outUserHandle)
+extern "C" DECLSPEC int
+SDL_GDKGetDefaultUser(XUserHandle *outUserHandle)
 {
     XAsyncBlock block = { 0 };
     HRESULT result;
@@ -257,3 +259,4 @@ int SDL_GDKGetDefaultUser(XUserHandle *outUserHandle)
 
     return 0;
 }
+

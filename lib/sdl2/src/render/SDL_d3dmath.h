@@ -18,9 +18,9 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../SDL_internal.h"
 
-#if (SDL_VIDEO_RENDER_D3D || SDL_VIDEO_RENDER_D3D11 || SDL_VIDEO_RENDER_D3D12 || SDL_VIDEO_RENDER_VULKAN)
+#if (SDL_VIDEO_RENDER_D3D || SDL_VIDEO_RENDER_D3D11 || SDL_VIDEO_RENDER_D3D12)
 
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
@@ -78,4 +78,6 @@ Float4X4 MatrixRotationZ(float r);
 }
 #endif
 
-#endif /* (SDL_VIDEO_RENDER_D3D || SDL_VIDEO_RENDER_D3D11 || SDL_VIDEO_RENDER_D3D12 || SDL_VIDEO_RENDER_VULKAN)*/
+#endif /* (SDL_VIDEO_RENDER_D3D || SDL_VIDEO_RENDER_D3D11 || SDL_VIDEO_RENDER_D3D12) */
+
+/* vi: set ts=4 sw=4 expandtab: */

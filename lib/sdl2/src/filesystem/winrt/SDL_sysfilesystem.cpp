@@ -18,14 +18,19 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 /* TODO, WinRT: remove the need to compile this with C++/CX (/ZW) extensions, and if possible, without C++ at all
  */
 
-#ifdef SDL_PLATFORM_WINRT
+#ifdef __WINRT__
 
 extern "C" {
+#include "SDL_filesystem.h"
+#include "SDL_error.h"
+#include "SDL_hints.h"
+#include "SDL_stdinc.h"
+#include "SDL_system.h"
 #include "../../core/windows/SDL_windows.h"
 }
 
@@ -35,7 +40,8 @@ extern "C" {
 using namespace std;
 using namespace Windows::Storage;
 
-static const wchar_t *SDL_WinRTGetFSPathUNICODE(SDL_WinRT_Path pathType)
+extern "C" const wchar_t *
+SDL_WinRTGetFSPathUNICODE(SDL_WinRT_Path pathType)
 {
     switch (pathType) {
     case SDL_WINRT_PATH_INSTALLED_LOCATION:
@@ -65,7 +71,7 @@ static const wchar_t *SDL_WinRTGetFSPathUNICODE(SDL_WinRT_Path pathType)
         return path.c_str();
     }
 
-#if !SDL_WINAPI_FAMILY_PHONE || NTDDI_VERSION > NTDDI_WIN8
+#if !SDL_WINAPI_FAMILY_PHONE || (NTDDI_VERSION > NTDDI_WIN8)
     case SDL_WINRT_PATH_ROAMING_FOLDER:
     {
         static wstring path;
@@ -93,7 +99,8 @@ static const wchar_t *SDL_WinRTGetFSPathUNICODE(SDL_WinRT_Path pathType)
     return NULL;
 }
 
-extern "C" const char *SDL_WinRTGetFSPath(SDL_WinRT_Path pathType)
+extern "C" const char *
+SDL_WinRTGetFSPathUTF8(SDL_WinRT_Path pathType)
 {
     typedef unordered_map<SDL_WinRT_Path, string> UTF8PathMap;
     static UTF8PathMap utf8Paths;
@@ -114,9 +121,10 @@ extern "C" const char *SDL_WinRTGetFSPath(SDL_WinRT_Path pathType)
     return utf8Paths[pathType].c_str();
 }
 
-extern "C" char *SDL_GetBasePath(void)
+extern "C" char *
+SDL_GetBasePath(void)
 {
-    const char *srcPath = SDL_WinRTGetFSPath(SDL_WINRT_PATH_INSTALLED_LOCATION);
+    const char *srcPath = SDL_WinRTGetFSPathUTF8(SDL_WINRT_PATH_INSTALLED_LOCATION);
     size_t destPathLen;
     char *destPath = NULL;
 
@@ -128,6 +136,7 @@ extern "C" char *SDL_GetBasePath(void)
     destPathLen = SDL_strlen(srcPath) + 2;
     destPath = (char *)SDL_malloc(destPathLen);
     if (!destPath) {
+        SDL_OutOfMemory();
         return NULL;
     }
 
@@ -135,7 +144,8 @@ extern "C" char *SDL_GetBasePath(void)
     return destPath;
 }
 
-extern "C" char *SDL_GetPrefPath(const char *org, const char *app)
+extern "C" char *
+SDL_GetPrefPath(const char *org, const char *app)
 {
     /* WinRT note: The 'SHGetFolderPath' API that is used in Windows 7 and
      * earlier is not available on WinRT or Windows Phone.  WinRT provides
@@ -173,12 +183,14 @@ extern "C" char *SDL_GetPrefPath(const char *org, const char *app)
 
     worg = WIN_UTF8ToString(org);
     if (!worg) {
+        SDL_OutOfMemory();
         return NULL;
     }
 
     wapp = WIN_UTF8ToString(app);
     if (!wapp) {
         SDL_free(worg);
+        SDL_OutOfMemory();
         return NULL;
     }
 
@@ -225,34 +237,6 @@ extern "C" char *SDL_GetPrefPath(const char *org, const char *app)
     return retval;
 }
 
-char *SDL_GetUserFolder(SDL_Folder folder)
-{
-    wstring wpath;
+#endif /* __WINRT__ */
 
-    switch (folder) {
-        #define CASEPATH(sym, var) case sym: wpath = Windows::Storage::UserDataPaths::GetDefault()->var->Data(); break
-        CASEPATH(SDL_FOLDER_HOME, Profile);
-        CASEPATH(SDL_FOLDER_DESKTOP, Desktop);
-        CASEPATH(SDL_FOLDER_DOCUMENTS, Documents);
-        CASEPATH(SDL_FOLDER_DOWNLOADS, Downloads);
-        CASEPATH(SDL_FOLDER_MUSIC, Music);
-        CASEPATH(SDL_FOLDER_PICTURES, Pictures);
-        CASEPATH(SDL_FOLDER_SCREENSHOTS, Screenshots);
-        CASEPATH(SDL_FOLDER_TEMPLATES, Templates);
-        CASEPATH(SDL_FOLDER_VIDEOS, Videos);
-        #undef CASEPATH
-        #define UNSUPPPORTED_CASEPATH(sym) SDL_SetError("The %s folder is unsupported on WinRT", #sym); return NULL;
-        UNSUPPPORTED_CASEPATH(SDL_FOLDER_PUBLICSHARE);
-        UNSUPPPORTED_CASEPATH(SDL_FOLDER_SAVEDGAMES);
-        #undef UNSUPPPORTED_CASEPATH
-        default:
-            SDL_SetError("Invalid SDL_Folder: %d", (int)folder);
-            return NULL;
-    };
-
-    wpath += L"\\";
-
-    return WIN_StringToUTF8(wpath.c_str());
-}
-
-#endif /* SDL_PLATFORM_WINRT */
+/* vi: set ts=4 sw=4 expandtab: */

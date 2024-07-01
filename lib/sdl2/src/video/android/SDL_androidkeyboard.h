@@ -18,16 +18,18 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 #include "SDL_androidvideo.h"
 
 extern int Android_OnKeyDown(int keycode);
 extern int Android_OnKeyUp(int keycode);
 
-extern SDL_bool Android_HasScreenKeyboardSupport(SDL_VideoDevice *_this);
-extern void Android_ShowScreenKeyboard(SDL_VideoDevice *_this, SDL_Window *window);
-extern void Android_HideScreenKeyboard(SDL_VideoDevice *_this, SDL_Window *window);
-extern void Android_RestoreScreenKeyboardOnResume(SDL_VideoDevice *_this, SDL_Window *window);
-extern SDL_bool Android_IsScreenKeyboardShown(SDL_VideoDevice *_this, SDL_Window *window);
-extern int Android_SetTextInputRect(SDL_VideoDevice *_this, const SDL_Rect *rect);
+extern SDL_bool Android_HasScreenKeyboardSupport(_THIS);
+extern void Android_ShowScreenKeyboard(_THIS, SDL_Window *window);
+extern void Android_HideScreenKeyboard(_THIS, SDL_Window *window);
+extern void Android_RestoreScreenKeyboardOnResume(_THIS, SDL_Window *window);
+extern SDL_bool Android_IsScreenKeyboardShown(_THIS, SDL_Window *window);
+extern void Android_SetTextInputRect(_THIS, const SDL_Rect *rect);
+
+/* vi: set ts=4 sw=4 expandtab: */

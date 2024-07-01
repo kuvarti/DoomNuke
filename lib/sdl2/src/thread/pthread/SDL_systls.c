@@ -18,7 +18,8 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
+#include "SDL_thread.h"
 #include "../SDL_systhread.h"
 #include "../SDL_thread_c.h"
 
@@ -33,7 +34,7 @@ SDL_TLSData *SDL_SYS_GetTLSData(void)
 {
     if (thread_local_storage == INVALID_PTHREAD_KEY && !generic_local_storage) {
         static SDL_SpinLock lock;
-        SDL_LockSpinlock(&lock);
+        SDL_AtomicLock(&lock);
         if (thread_local_storage == INVALID_PTHREAD_KEY && !generic_local_storage) {
             pthread_key_t storage;
             if (pthread_key_create(&storage, NULL) == 0) {
@@ -43,7 +44,7 @@ SDL_TLSData *SDL_SYS_GetTLSData(void)
                 generic_local_storage = SDL_TRUE;
             }
         }
-        SDL_UnlockSpinlock(&lock);
+        SDL_AtomicUnlock(&lock);
     }
     if (generic_local_storage) {
         return SDL_Generic_GetTLSData();
@@ -62,3 +63,5 @@ int SDL_SYS_SetTLSData(SDL_TLSData *data)
     }
     return 0;
 }
+
+/* vi: set ts=4 sw=4 expandtab: */

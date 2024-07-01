@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 #ifdef SDL_VIDEO_DRIVER_ANDROID
 
@@ -330,49 +330,56 @@ static SDL_Scancode TranslateKeycode(int keycode)
 
 int Android_OnKeyDown(int keycode)
 {
-    return SDL_SendKeyboardKey(0, SDL_DEFAULT_KEYBOARD_ID, SDL_PRESSED, TranslateKeycode(keycode));
+    return SDL_SendKeyboardKey(SDL_PRESSED, TranslateKeycode(keycode));
 }
 
 int Android_OnKeyUp(int keycode)
 {
-    return SDL_SendKeyboardKey(0, SDL_DEFAULT_KEYBOARD_ID, SDL_RELEASED, TranslateKeycode(keycode));
+    return SDL_SendKeyboardKey(SDL_RELEASED, TranslateKeycode(keycode));
 }
 
-SDL_bool Android_HasScreenKeyboardSupport(SDL_VideoDevice *_this)
+SDL_bool Android_HasScreenKeyboardSupport(_THIS)
 {
     return SDL_TRUE;
 }
 
-void Android_ShowScreenKeyboard(SDL_VideoDevice *_this, SDL_Window *window)
+void Android_ShowScreenKeyboard(_THIS, SDL_Window *window)
 {
     SDL_VideoData *videodata = _this->driverdata;
     Android_JNI_ShowScreenKeyboard(&videodata->textRect);
     SDL_screen_keyboard_shown = SDL_TRUE;
 }
 
-void Android_HideScreenKeyboard(SDL_VideoDevice *_this, SDL_Window *window)
+void Android_HideScreenKeyboard(_THIS, SDL_Window *window)
 {
     Android_JNI_HideScreenKeyboard();
     SDL_screen_keyboard_shown = SDL_FALSE;
 }
 
-void Android_RestoreScreenKeyboardOnResume(SDL_VideoDevice *_this, SDL_Window *window)
+void Android_RestoreScreenKeyboardOnResume(_THIS, SDL_Window *window)
 {
     if (SDL_screen_keyboard_shown) {
         Android_ShowScreenKeyboard(_this, window);
     }
 }
 
-SDL_bool Android_IsScreenKeyboardShown(SDL_VideoDevice *_this, SDL_Window *window)
+SDL_bool Android_IsScreenKeyboardShown(_THIS, SDL_Window *window)
 {
     return Android_JNI_IsScreenKeyboardShown();
 }
 
-int Android_SetTextInputRect(SDL_VideoDevice *_this, const SDL_Rect *rect)
+void Android_SetTextInputRect(_THIS, const SDL_Rect *rect)
 {
-    SDL_VideoData *videodata = _this->driverdata;
+    SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
+
+    if (!rect) {
+        SDL_InvalidParamError("rect");
+        return;
+    }
+
     videodata->textRect = *rect;
-    return 0;
 }
 
 #endif /* SDL_VIDEO_DRIVER_ANDROID */
+
+/* vi: set ts=4 sw=4 expandtab: */

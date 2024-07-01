@@ -18,8 +18,9 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
+#include "SDL_events.h"
 #include "../SDL_sysjoystick.h"
 #include "../../core/windows/SDL_windows.h"
 #include "../../core/windows/SDL_directx.h"
@@ -101,3 +102,5 @@ extern void WINDOWS_AddJoystickDevice(JoyStick_DeviceData *device);
 #ifdef __cplusplus
 }
 #endif
+
+/* vi: set ts=4 sw=4 expandtab: */

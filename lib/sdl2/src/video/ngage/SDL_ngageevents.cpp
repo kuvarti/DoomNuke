@@ -19,7 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 #ifdef SDL_VIDEO_DRIVER_NGAGE
 
@@ -40,19 +40,19 @@ extern "C" {
 #include "SDL_ngagevideo.h"
 #include "SDL_ngageevents_c.h"
 
-int HandleWsEvent(SDL_VideoDevice *_this, const TWsEvent &aWsEvent);
+int HandleWsEvent(_THIS, const TWsEvent &aWsEvent);
 
-void NGAGE_PumpEvents(SDL_VideoDevice *_this)
+void NGAGE_PumpEvents(_THIS)
 {
-    SDL_VideoData *data = _this->driverdata;
+    SDL_VideoData *phdata = (SDL_VideoData *)_this->driverdata;
 
-    while (data->NGAGE_WsEventStatus != KRequestPending) {
-        data->NGAGE_WsSession.GetEvent(data->NGAGE_WsEvent);
+    while (phdata->NGAGE_WsEventStatus != KRequestPending) {
+        phdata->NGAGE_WsSession.GetEvent(phdata->NGAGE_WsEvent);
 
-        HandleWsEvent(_this, data->NGAGE_WsEvent);
+        HandleWsEvent(_this, phdata->NGAGE_WsEvent);
 
-        data->NGAGE_WsEventStatus = KRequestPending;
-        data->NGAGE_WsSession.EventReady(&data->NGAGE_WsEventStatus);
+        phdata->NGAGE_WsEventStatus = KRequestPending;
+        phdata->NGAGE_WsSession.EventReady(&phdata->NGAGE_WsEventStatus);
     }
 }
 
@@ -63,12 +63,12 @@ void NGAGE_PumpEvents(SDL_VideoDevice *_this)
 #include <bautils.h>
 #include <hal.h>
 
-extern void DisableKeyBlocking(SDL_VideoDevice *_this);
-extern void RedrawWindowL(SDL_VideoDevice *_this);
+extern void DisableKeyBlocking(_THIS);
+extern void RedrawWindowL(_THIS);
 
 TBool isCursorVisible = EFalse;
 
-static SDL_Scancode ConvertScancode(SDL_VideoDevice *_this, int key)
+static SDL_Scancode ConvertScancode(_THIS, int key)
 {
     SDL_Keycode keycode;
 
@@ -147,27 +147,27 @@ static SDL_Scancode ConvertScancode(SDL_VideoDevice *_this, int key)
     return SDL_GetScancodeFromKey(keycode);
 }
 
-int HandleWsEvent(SDL_VideoDevice *_this, const TWsEvent &aWsEvent)
+int HandleWsEvent(_THIS, const TWsEvent &aWsEvent)
 {
-    SDL_VideoData *data = _this->driverdata;
+    SDL_VideoData *phdata = (SDL_VideoData *)_this->driverdata;
     int posted = 0;
 
     switch (aWsEvent.Type()) {
     case EEventKeyDown: /* Key events */
-        SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, SDL_PRESSED, ConvertScancode(_this, aWsEvent.Key()->iScanCode));
+        SDL_SendKeyboardKey(SDL_PRESSED, ConvertScancode(_this, aWsEvent.Key()->iScanCode));
         break;
     case EEventKeyUp: /* Key events */
-        SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, SDL_RELEASED, ConvertScancode(_this, aWsEvent.Key()->iScanCode));
+        SDL_SendKeyboardKey(SDL_RELEASED, ConvertScancode(_this, aWsEvent.Key()->iScanCode));
         break;
     case EEventFocusGained: /* SDL window got focus */
-        data->NGAGE_IsWindowFocused = ETrue;
+        phdata->NGAGE_IsWindowFocused = ETrue;
         /* Draw window background and screen buffer */
         DisableKeyBlocking(_this);
         RedrawWindowL(_this);
         break;
     case EEventFocusLost: /* SDL window lost focus */
     {
-        data->NGAGE_IsWindowFocused = EFalse;
+        phdata->NGAGE_IsWindowFocused = EFalse;
         RWsSession s;
         s.Connect();
         RWindowGroup g(s);
@@ -175,7 +175,7 @@ int HandleWsEvent(SDL_VideoDevice *_this, const TWsEvent &aWsEvent)
         g.EnableReceiptOfFocus(EFalse);
         RWindow w(s);
         w.Construct(g, TUint32(&w));
-        w.SetExtent(TPoint(0, 0), data->NGAGE_WsWindow.Size());
+        w.SetExtent(TPoint(0, 0), phdata->NGAGE_WsWindow.Size());
         w.SetOrdinalPosition(0);
         w.Activate();
         w.Close();
@@ -192,3 +192,5 @@ int HandleWsEvent(SDL_VideoDevice *_this, const TWsEvent &aWsEvent)
 }
 
 #endif /* SDL_VIDEO_DRIVER_NGAGE */
+
+/* vi: set ts=4 sw=4 expandtab: */

@@ -13,23 +13,23 @@
    If you build without SDL_ttf, you can use the GNU Unifont hex file instead.
    Download at http://unifoundry.com/unifont.html */
 
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_main.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "SDL.h"
 #ifdef HAVE_SDL_TTF
 #include "SDL_ttf.h"
 #endif
 
-#include <SDL3/SDL_test_common.h>
+#include "SDL_test_common.h"
 #include "testutils.h"
 
-#ifdef HAVE_SDL_TTF
 #define DEFAULT_PTSIZE 30
-#endif
-
 #ifdef HAVE_SDL_TTF
-#ifdef SDL_PLATFORM_MACOS
+#ifdef __MACOSX__
 #define DEFAULT_FONT "/System/Library/Fonts/华文细黑.ttf"
-#elif defined(SDL_PLATFORM_WIN32)
+#elif defined(__WIN32__)
 /* Some japanese font present on at least Windows 8.1. */
 #define DEFAULT_FONT "C:\\Windows\\Fonts\\yugothic.ttf"
 #else
@@ -41,11 +41,11 @@
 #define MAX_TEXT_LENGTH 256
 
 static SDLTest_CommonState *state;
-static SDL_FRect textRect, markedRect;
+static SDL_Rect textRect, markedRect;
 static SDL_Color lineColor = { 0, 0, 0, 255 };
 static SDL_Color backColor = { 255, 255, 255, 255 };
 static SDL_Color textColor = { 0, 0, 0, 255 };
-static char text[MAX_TEXT_LENGTH], markedText[MAX_TEXT_LENGTH];
+static char text[MAX_TEXT_LENGTH], markedText[SDL_TEXTEDITINGEVENT_TEXT_SIZE];
 static int cursor = 0;
 #ifdef HAVE_SDL_TTF
 static TTF_Font *font;
@@ -60,7 +60,7 @@ static TTF_Font *font;
 #define UNIFONT_TEXTURE_SIZE      (UNIFONT_TEXTURE_WIDTH * UNIFONT_TEXTURE_WIDTH * 4)
 #define UNIFONT_TEXTURE_PITCH     (UNIFONT_TEXTURE_WIDTH * 4)
 #define UNIFONT_DRAW_SCALE        2
-static struct UnifontGlyph
+struct UnifontGlyph
 {
     Uint8 width;
     Uint8 data[32];
@@ -109,7 +109,7 @@ static int unifont_init(const char *fontname)
     Uint32 numGlyphs = 0;
     int lineNumber = 1;
     size_t bytesRead;
-    SDL_IOStream *hexFile;
+    SDL_RWops *hexFile;
     const size_t unifontGlyphSize = UNIFONT_NUM_GLYPHS * sizeof(struct UnifontGlyph);
     const size_t unifontTextureSize = UNIFONT_NUM_TEXTURES * state->num_windows * sizeof(void *);
     char *filename;
@@ -135,7 +135,7 @@ static int unifont_init(const char *fontname)
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Out of memory\n");
         return -1;
     }
-    hexFile = SDL_IOFromFile(filename, "rb");
+    hexFile = SDL_RWFromFile(filename, "rb");
     SDL_free(filename);
     if (!hexFile) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "unifont: Failed to open font file: %s\n", fontname);
@@ -149,7 +149,7 @@ static int unifont_init(const char *fontname)
         Uint8 glyphWidth;
         Uint32 codepoint;
 
-        bytesRead = SDL_ReadIO(hexFile, hexBuffer, 9);
+        bytesRead = SDL_RWread(hexFile, hexBuffer, 1, 9);
         if (numGlyphs > 0 && bytesRead == 0) {
             break; /* EOF */
         }
@@ -185,8 +185,7 @@ static int unifont_init(const char *fontname)
         if (codepointHexSize < 8) {
             SDL_memmove(hexBuffer, hexBuffer + codepointHexSize + 1, bytesOverread);
         }
-        bytesRead = SDL_ReadIO(hexFile, hexBuffer + bytesOverread, 33 - bytesOverread);
-
+        bytesRead = SDL_RWread(hexFile, hexBuffer + bytesOverread, 1, 33 - bytesOverread);
         if (bytesRead < (33 - bytesOverread)) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "unifont: Unexpected end of hex file.\n");
             return -1;
@@ -195,7 +194,7 @@ static int unifont_init(const char *fontname)
             glyphWidth = 8;
         } else {
             glyphWidth = 16;
-            bytesRead = SDL_ReadIO(hexFile, hexBuffer + 33, 32);
+            bytesRead = SDL_RWread(hexFile, hexBuffer + 33, 1, 32);
             if (bytesRead < 32) {
                 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "unifont: Unexpected end of hex file.\n");
                 return -1;
@@ -223,7 +222,7 @@ static int unifont_init(const char *fontname)
         lineNumber++;
     } while (bytesRead > 0);
 
-    SDL_CloseIO(hexFile);
+    SDL_RWclose(hexFile);
     SDL_Log("unifont: Loaded %" SDL_PRIu32 " glyphs.\n", numGlyphs);
     return 0;
 }
@@ -310,12 +309,12 @@ static int unifont_load_texture(Uint32 textureID)
     return 0;
 }
 
-static Sint32 unifont_draw_glyph(Uint32 codepoint, int rendererID, SDL_FRect *dst)
+static Sint32 unifont_draw_glyph(Uint32 codepoint, int rendererID, SDL_Rect *dstrect)
 {
     SDL_Texture *texture;
     const Uint32 textureID = codepoint / UNIFONT_GLYPHS_IN_TEXTURE;
-    SDL_FRect srcrect;
-    srcrect.w = srcrect.h = 16.0f;
+    SDL_Rect srcrect;
+    srcrect.w = srcrect.h = 16;
     if (codepoint > UNIFONT_MAX_CODEPOINT) {
         return 0;
     }
@@ -327,14 +326,14 @@ static Sint32 unifont_draw_glyph(Uint32 codepoint, int rendererID, SDL_FRect *ds
     texture = unifontTexture[UNIFONT_NUM_TEXTURES * rendererID + textureID];
     if (texture) {
         const Uint32 cInTex = codepoint % UNIFONT_GLYPHS_IN_TEXTURE;
-        srcrect.x = (float)(cInTex % UNIFONT_GLYPHS_IN_ROW * 16);
-        srcrect.y = (float)(cInTex / UNIFONT_GLYPHS_IN_ROW * 16);
-        SDL_RenderTexture(state->renderers[rendererID], texture, &srcrect, dst);
+        srcrect.x = cInTex % UNIFONT_GLYPHS_IN_ROW * 16;
+        srcrect.y = cInTex / UNIFONT_GLYPHS_IN_ROW * 16;
+        SDL_RenderCopy(state->renderers[rendererID], texture, &srcrect, dstrect);
     }
     return unifontGlyph[codepoint].width;
 }
 
-static void unifont_cleanup(void)
+static void unifont_cleanup()
 {
     int i, j;
     for (i = 0; i < state->num_windows; ++i) {
@@ -361,7 +360,7 @@ static void unifont_cleanup(void)
 /* Unifont code end */
 #endif
 
-static size_t utf8_length(unsigned char c)
+size_t utf8_length(unsigned char c)
 {
     c = (unsigned char)(0xff & c);
     if (c < 0x80) {
@@ -376,8 +375,7 @@ static size_t utf8_length(unsigned char c)
     return 0;
 }
 
-#ifdef HAVE_SDL_TTF
-static char *utf8_next(char *p)
+char *utf8_next(char *p)
 {
     size_t len = utf8_length(*p);
     size_t i = 0;
@@ -394,8 +392,7 @@ static char *utf8_next(char *p)
     return p;
 }
 
-
-static char *utf8_advance(char *p, size_t distance)
+char *utf8_advance(char *p, size_t distance)
 {
     size_t i = 0;
     for (; i < distance && p; ++i) {
@@ -403,9 +400,8 @@ static char *utf8_advance(char *p, size_t distance)
     }
     return p;
 }
-#endif
 
-static Uint32 utf8_decode(char *p, size_t len)
+Uint32 utf8_decode(char *p, size_t len)
 {
     Uint32 codepoint = 0;
     size_t i = 0;
@@ -429,12 +425,17 @@ static Uint32 utf8_decode(char *p, size_t len)
     return codepoint;
 }
 
-static void InitInput(void)
+void usage()
+{
+    SDL_Log("usage: testime [--font fontfile]\n");
+}
+
+void InitInput()
 {
     /* Prepare a rect for text input */
-    textRect.x = textRect.y = 100.0f;
+    textRect.x = textRect.y = 100;
     textRect.w = DEFAULT_WINDOW_WIDTH - 2 * textRect.x;
-    textRect.h = 50.0f;
+    textRect.h = 50;
 
     text[0] = 0;
     markedRect = textRect;
@@ -443,7 +444,7 @@ static void InitInput(void)
     SDL_StartTextInput();
 }
 
-static void CleanupVideo(void)
+void CleanupVideo()
 {
     SDL_StopTextInput();
 #ifdef HAVE_SDL_TTF
@@ -454,14 +455,12 @@ static void CleanupVideo(void)
 #endif
 }
 
-static void _Redraw(int rendererID)
+void _Redraw(int rendererID)
 {
     SDL_Renderer *renderer = state->renderers[rendererID];
-    SDL_FRect drawnTextRect, cursorRect, underlineRect;
-    drawnTextRect.x = textRect.x;
-    drawnTextRect.y = 0;
+    SDL_Rect drawnTextRect, cursorRect, underlineRect;
+    drawnTextRect = textRect;
     drawnTextRect.w = 0;
-    drawnTextRect.h = 0;
 
     SDL_SetRenderDrawColor(renderer, backColor.r, backColor.g, backColor.b, backColor.a);
     SDL_RenderFillRect(renderer, &textRect);
@@ -477,15 +476,15 @@ static void _Redraw(int rendererID)
         drawnTextRect.h = textSur->h;
 
         texture = SDL_CreateTextureFromSurface(renderer, textSur);
-        SDL_DestroySurface(textSur);
+        SDL_FreeSurface(textSur);
 
-        SDL_RenderTexture(renderer, texture, NULL, &drawnTextRect);
+        SDL_RenderCopy(renderer, texture, NULL, &drawnTextRect);
         SDL_DestroyTexture(texture);
 #else
         char *utext = text;
         Uint32 codepoint;
         size_t len;
-        SDL_FRect dstrect;
+        SDL_Rect dstrect;
 
         dstrect.x = textRect.x;
         dstrect.y = textRect.y + (textRect.h - 16 * UNIFONT_DRAW_SCALE) / 2;
@@ -494,7 +493,7 @@ static void _Redraw(int rendererID)
         drawnTextRect.y = dstrect.y;
         drawnTextRect.h = dstrect.h;
 
-        while ((codepoint = utf8_decode(utext, len = utf8_length(*utext))) != 0) {
+        while ((codepoint = utf8_decode(utext, len = utf8_length(*utext)))) {
             Sint32 advance = unifont_draw_glyph(codepoint, rendererID, &dstrect) * UNIFONT_DRAW_SCALE;
             dstrect.x += advance;
             drawnTextRect.w += advance;
@@ -548,16 +547,16 @@ static void _Redraw(int rendererID)
         drawnTextRect.h = textSur->h;
 
         texture = SDL_CreateTextureFromSurface(renderer, textSur);
-        SDL_DestroySurface(textSur);
+        SDL_FreeSurface(textSur);
 
-        SDL_RenderTexture(renderer, texture, NULL, &drawnTextRect);
+        SDL_RenderCopy(renderer, texture, NULL, &drawnTextRect);
         SDL_DestroyTexture(texture);
 #else
         int i = 0;
         char *utext = markedText;
         Uint32 codepoint;
         size_t len;
-        SDL_FRect dstrect;
+        SDL_Rect dstrect;
 
         dstrect.x = drawnTextRect.x;
         dstrect.y = textRect.y + (textRect.h - 16 * UNIFONT_DRAW_SCALE) / 2;
@@ -566,7 +565,7 @@ static void _Redraw(int rendererID)
         drawnTextRect.y = dstrect.y;
         drawnTextRect.h = dstrect.h;
 
-        while ((codepoint = utf8_decode(utext, len = utf8_length(*utext))) != 0) {
+        while ((codepoint = utf8_decode(utext, len = utf8_length(*utext)))) {
             Sint32 advance = unifont_draw_glyph(codepoint, rendererID, &dstrect) * UNIFONT_DRAW_SCALE;
             dstrect.x += advance;
             drawnTextRect.w += advance;
@@ -595,18 +594,10 @@ static void _Redraw(int rendererID)
     SDL_SetRenderDrawColor(renderer, lineColor.r, lineColor.g, lineColor.b, lineColor.a);
     SDL_RenderFillRect(renderer, &cursorRect);
 
-    {
-        SDL_Rect inputrect;
-
-        inputrect.x = (int)markedRect.x;
-        inputrect.y = (int)markedRect.y;
-        inputrect.w = (int)markedRect.w;
-        inputrect.h = (int)markedRect.h;
-        SDL_SetTextInputRect(&inputrect);
-    }
+    SDL_SetTextInputRect(&markedRect);
 }
 
-static void Redraw(void)
+void Redraw()
 {
     int i;
     for (i = 0; i < state->num_windows; ++i) {
@@ -628,42 +619,41 @@ int main(int argc, char *argv[])
 {
     int i, done;
     SDL_Event event;
-    char *fontname = NULL;
+    const char *fontname = DEFAULT_FONT;
+
+    /* Enable standard application logging */
+    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
     if (!state) {
         return 1;
     }
+    for (i = 1; i < argc; i++) {
+        SDLTest_CommonArg(state, i);
+    }
+    for (argc--, argv++; argc > 0; argc--, argv++) {
+        if (SDL_strcmp(argv[0], "--help") == 0) {
+            usage();
+            return 0;
+        }
 
-    /* Enable standard application logging */
-    SDL_SetLogPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+        else if (SDL_strcmp(argv[0], "--font") == 0) {
+            argc--;
+            argv++;
 
-    /* Parse commandline */
-    for (i = 1; i < argc;) {
-        int consumed;
-
-        consumed = SDLTest_CommonArg(state, i);
-        if (SDL_strcmp(argv[i], "--font") == 0) {
-            if (*argv[i+1]) {
-                fontname = argv[i+1];
-                consumed = 2;
+            if (argc > 0) {
+                fontname = argv[0];
+            } else {
+                usage();
+                return 0;
             }
         }
-        if (consumed <= 0) {
-            static const char *options[] = { "[--font fontfile]", NULL };
-            SDLTest_CommonLogUsage(state, argv[0], options);
-            return 1;
-        }
-
-        i += consumed;
     }
 
     if (!SDLTest_CommonInit(state)) {
         return 2;
     }
-
-    fontname = GetResourceFilename(fontname, DEFAULT_FONT);
 
 #ifdef HAVE_SDL_TTF
     /* Initialize fonts */
@@ -698,7 +688,7 @@ int main(int argc, char *argv[])
         while (SDL_PollEvent(&event)) {
             SDLTest_CommonEvent(state, &event, &done);
             switch (event.type) {
-            case SDL_EVENT_KEY_DOWN:
+            case SDL_KEYDOWN:
                 switch (event.key.keysym.sym) {
                 case SDLK_RETURN:
                     text[0] = 0x00;
@@ -733,8 +723,6 @@ int main(int argc, char *argv[])
                         Redraw();
                     }
                     break;
-                default:
-                    break;
                 }
 
                 if (done) {
@@ -748,7 +736,7 @@ int main(int argc, char *argv[])
                         SDL_GetKeyName(event.key.keysym.sym));
                 break;
 
-            case SDL_EVENT_TEXT_INPUT:
+            case SDL_TEXTINPUT:
                 if (event.text.text[0] == '\0' || event.text.text[0] == '\n' || markedRect.w < 0) {
                     break;
                 }
@@ -759,30 +747,29 @@ int main(int argc, char *argv[])
                     SDL_strlcat(text, event.text.text, sizeof(text));
                 }
 
-                SDL_Log("text inputted: %s\n", text);
+                SDL_Log("text inputed: %s\n", text);
 
-                /* After text inputted, we can clear up markedText because it */
+                /* After text inputed, we can clear up markedText because it */
                 /* is committed */
                 markedText[0] = 0;
                 Redraw();
                 break;
 
-            case SDL_EVENT_TEXT_EDITING:
+            case SDL_TEXTEDITING:
                 SDL_Log("text editing \"%s\", selected range (%" SDL_PRIs32 ", %" SDL_PRIs32 ")\n",
                         event.edit.text, event.edit.start, event.edit.length);
 
-                SDL_strlcpy(markedText, event.edit.text, sizeof(markedText));
+                SDL_strlcpy(markedText, event.edit.text, SDL_TEXTEDITINGEVENT_TEXT_SIZE);
                 cursor = event.edit.start;
                 Redraw();
-                break;
-
-            default:
                 break;
             }
         }
     }
-    SDL_free(fontname);
     CleanupVideo();
     SDLTest_CommonQuit(state);
     return 0;
 }
+
+
+/* vi: set ts=4 sw=4 expandtab: */

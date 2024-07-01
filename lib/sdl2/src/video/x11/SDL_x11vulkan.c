@@ -18,20 +18,19 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 #if defined(SDL_VIDEO_VULKAN) && defined(SDL_VIDEO_DRIVER_X11)
 
-#include "../SDL_vulkan_internal.h"
-
 #include "SDL_x11video.h"
 
+#include "SDL_loadso.h"
 #include "SDL_x11vulkan.h"
 
 #include <X11/Xlib.h>
 /*#include <xcb/xcb.h>*/
 
-#ifdef SDL_PLATFORM_OPENBSD
+#if defined(__OpenBSD__)
 #define DEFAULT_VULKAN "libvulkan.so"
 #else
 #define DEFAULT_VULKAN "libvulkan.so.1"
@@ -42,9 +41,9 @@ typedef uint32_t xcb_window_t;
 typedef uint32_t xcb_visualid_t;
 */
 
-int X11_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
+int X11_Vulkan_LoadLibrary(_THIS, const char *path)
 {
-    SDL_VideoData *videoData = _this->driverdata;
+    SDL_VideoData *videoData = (SDL_VideoData *)_this->driverdata;
     VkExtensionProperties *extensions = NULL;
     Uint32 extensionCount = 0;
     SDL_bool hasSurfaceExtension = SDL_FALSE;
@@ -116,7 +115,7 @@ int X11_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
             goto fail;
         }
         videoData->vulkan_XGetXCBConnection =
-            (PFN_XGetXCBConnection)SDL_LoadFunction(videoData->vulkan_xlib_xcb_library, "XGetXCBConnection");
+            SDL_LoadFunction(videoData->vulkan_xlib_xcb_library, "XGetXCBConnection");
         if (!videoData->vulkan_XGetXCBConnection) {
             SDL_UnloadObject(videoData->vulkan_xlib_xcb_library);
             goto fail;
@@ -130,9 +129,9 @@ fail:
     return -1;
 }
 
-void X11_Vulkan_UnloadLibrary(SDL_VideoDevice *_this)
+void X11_Vulkan_UnloadLibrary(_THIS)
 {
-    SDL_VideoData *videoData = _this->driverdata;
+    SDL_VideoData *videoData = (SDL_VideoData *)_this->driverdata;
     if (_this->vulkan_config.loader_handle) {
         if (videoData->vulkan_xlib_xcb_library) {
             SDL_UnloadObject(videoData->vulkan_xlib_xcb_library);
@@ -142,39 +141,40 @@ void X11_Vulkan_UnloadLibrary(SDL_VideoDevice *_this)
     }
 }
 
-char const* const* X11_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
-                                          Uint32 *count)
+SDL_bool X11_Vulkan_GetInstanceExtensions(_THIS,
+                                          SDL_Window *window,
+                                          unsigned *count,
+                                          const char **names)
 {
-    SDL_VideoData *videoData = _this->driverdata;
+    SDL_VideoData *videoData = (SDL_VideoData *)_this->driverdata;
+    if (!_this->vulkan_config.loader_handle) {
+        SDL_SetError("Vulkan is not loaded");
+        return SDL_FALSE;
+    }
     if (videoData->vulkan_xlib_xcb_library) {
         static const char *const extensionsForXCB[] = {
             VK_KHR_SURFACE_EXTENSION_NAME,
             VK_KHR_XCB_SURFACE_EXTENSION_NAME,
         };
-        if(count) {
-            *count = SDL_arraysize(extensionsForXCB);
-        }
-        return extensionsForXCB;
+        return SDL_Vulkan_GetInstanceExtensions_Helper(
+            count, names, SDL_arraysize(extensionsForXCB), extensionsForXCB);
     } else {
         static const char *const extensionsForXlib[] = {
             VK_KHR_SURFACE_EXTENSION_NAME,
             VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
         };
-        if(count) {
-            *count = SDL_arraysize(extensionsForXlib);
-        }
-        return extensionsForXlib;
+        return SDL_Vulkan_GetInstanceExtensions_Helper(
+            count, names, SDL_arraysize(extensionsForXlib), extensionsForXlib);
     }
 }
 
-SDL_bool X11_Vulkan_CreateSurface(SDL_VideoDevice *_this,
+SDL_bool X11_Vulkan_CreateSurface(_THIS,
                                   SDL_Window *window,
                                   VkInstance instance,
-                                  const struct VkAllocationCallbacks *allocator,
                                   VkSurfaceKHR *surface)
 {
-    SDL_VideoData *videoData = _this->driverdata;
-    SDL_WindowData *windowData = window->driverdata;
+    SDL_VideoData *videoData = (SDL_VideoData *)_this->driverdata;
+    SDL_WindowData *windowData = (SDL_WindowData *)window->driverdata;
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr;
     if (!_this->vulkan_config.loader_handle) {
         SDL_SetError("Vulkan is not loaded");
@@ -200,7 +200,8 @@ SDL_bool X11_Vulkan_CreateSurface(SDL_VideoDevice *_this,
             return SDL_FALSE;
         }
         createInfo.window = (xcb_window_t)windowData->xwindow;
-        result = vkCreateXcbSurfaceKHR(instance, &createInfo, allocator, surface);
+        result = vkCreateXcbSurfaceKHR(instance, &createInfo,
+                                       NULL, surface);
         if (result != VK_SUCCESS) {
             SDL_SetError("vkCreateXcbSurfaceKHR failed: %s", SDL_Vulkan_GetResultString(result));
             return SDL_FALSE;
@@ -221,7 +222,8 @@ SDL_bool X11_Vulkan_CreateSurface(SDL_VideoDevice *_this,
         createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
         createInfo.dpy = videoData->display;
         createInfo.window = (xcb_window_t)windowData->xwindow;
-        result = vkCreateXlibSurfaceKHR(instance, &createInfo, allocator, surface);
+        result = vkCreateXlibSurfaceKHR(instance, &createInfo,
+                                        NULL, surface);
         if (result != VK_SUCCESS) {
             SDL_SetError("vkCreateXlibSurfaceKHR failed: %s", SDL_Vulkan_GetResultString(result));
             return SDL_FALSE;
@@ -230,14 +232,6 @@ SDL_bool X11_Vulkan_CreateSurface(SDL_VideoDevice *_this,
     }
 }
 
-void X11_Vulkan_DestroySurface(SDL_VideoDevice *_this,
-                               VkInstance instance,
-                               VkSurfaceKHR surface,
-                               const struct VkAllocationCallbacks *allocator)
-{
-    if (_this->vulkan_config.loader_handle) {
-        SDL_Vulkan_DestroySurface_Internal(_this->vulkan_config.vkGetInstanceProcAddr, instance, surface, allocator);
-    }
-}
-
 #endif
+
+/* vim: set ts=4 sw=4 expandtab: */

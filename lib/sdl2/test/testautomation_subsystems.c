@@ -1,9 +1,9 @@
 /**
- * Events test suite
+ * Subsystem test suite
  */
-#include "testautomation_suites.h"
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_test.h>
+
+#include "SDL.h"
+#include "SDL_test.h"
 
 /* ================= Test Case Implementation ================== */
 
@@ -15,12 +15,12 @@ static void subsystemsSetUp(void *arg)
     /* CHECKME: can we use SDL_Quit here, or this will break the flow of tests? */
     SDL_Quit();
     /* Alternate variant without SDL_Quit:
-        while (SDL_WasInit(0) != 0) {
-            SDL_QuitSubSystem(~0U);
+        while (SDL_WasInit(SDL_INIT_EVERYTHING) != 0) {
+            SDL_QuitSubSystem(SDL_INIT_EVERYTHING);
         }
     */
     SDLTest_AssertPass("Reset all subsystems before subsystems test");
-    SDLTest_AssertCheck(SDL_WasInit(0) == 0, "Check result from SDL_WasInit(0)");
+    SDLTest_AssertCheck(SDL_WasInit(SDL_INIT_EVERYTHING) == 0, "Check result from SDL_WasInit(SDL_INIT_EVERYTHING)");
 }
 
 static void subsystemsTearDown(void *arg)
@@ -34,7 +34,7 @@ static void subsystemsTearDown(void *arg)
 /* Test case functions */
 
 /**
- * Inits and Quits particular subsystem, checking its Init status.
+ * \brief Inits and Quits particular subsystem, checking its Init status.
  *
  * \sa SDL_InitSubSystem
  * \sa SDL_QuitSubSystem
@@ -83,7 +83,7 @@ static int subsystems_referenceCount()
 }
 
 /**
- * Inits and Quits subsystems that have another as dependency;
+ * \brief Inits and Quits subsystems that have another as dependency;
  *        check that the dependency is not removed before the last of its dependents.
  *
  * \sa SDL_InitSubSystem
@@ -121,7 +121,7 @@ static int subsystems_dependRefCountInitAllQuitByOne()
 }
 
 /**
- * Inits and Quits subsystems that have another as dependency;
+ * \brief Inits and Quits subsystems that have another as dependency;
  *        check that the dependency is not removed before the last of its dependents.
  *
  * \sa SDL_InitSubSystem
@@ -155,7 +155,7 @@ static int subsystems_dependRefCountInitByOneQuitAll()
 }
 
 /**
- * Inits and Quits subsystems that have another as dependency,
+ * \brief Inits and Quits subsystems that have another as dependency,
  *        but also inits that dependency explicitly, giving it extra ref count.
  *        Check that the dependency is not removed before the last reference is gone.
  *

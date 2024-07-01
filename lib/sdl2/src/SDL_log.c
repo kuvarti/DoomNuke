@@ -18,21 +18,25 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "./SDL_internal.h"
 
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINRT) || defined(SDL_PLATFORM_GDK)
+#if defined(__WIN32__) || defined(__WINRT__) || defined(__GDK__)
 #include "core/windows/SDL_windows.h"
 #endif
 
 /* Simple log messages in SDL */
 
+#include "SDL_error.h"
+#include "SDL_log.h"
+#include "SDL_hints.h"
+#include "SDL_mutex.h"
 #include "SDL_log_c.h"
 
 #ifdef HAVE_STDIO_H
 #include <stdio.h>
 #endif
 
-#ifdef SDL_PLATFORM_ANDROID
+#if defined(__ANDROID__)
 #include <android/log.h>
 #endif
 
@@ -58,12 +62,7 @@ static SDL_bool SDL_forced_priority = SDL_FALSE;
 static SDL_LogPriority SDL_forced_priority_level;
 static SDL_LogOutputFunction SDL_log_function = SDL_LogOutput;
 static void *SDL_log_userdata = NULL;
-static SDL_Mutex *log_function_mutex = NULL;
-
-#ifdef HAVE_GCC_DIAGNOSTIC_PRAGMA
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
+static SDL_mutex *log_function_mutex = NULL;
 
 /* If this list changes, update the documentation for SDL_HINT_LOGGING */
 static const char *SDL_priority_prefixes[] = {
@@ -91,11 +90,7 @@ static const char *SDL_category_prefixes[] = {
 };
 SDL_COMPILE_TIME_ASSERT(category_prefixes, SDL_arraysize(SDL_category_prefixes) == SDL_LOG_CATEGORY_RESERVED1);
 
-#ifdef HAVE_GCC_DIAGNOSTIC_PRAGMA
-#pragma GCC diagnostic pop
-#endif
-
-#ifdef SDL_PLATFORM_ANDROID
+#ifdef __ANDROID__
 static int SDL_android_priority[SDL_NUM_LOG_PRIORITIES] = {
     ANDROID_LOG_UNKNOWN,
     ANDROID_LOG_VERBOSE,
@@ -105,9 +100,9 @@ static int SDL_android_priority[SDL_NUM_LOG_PRIORITIES] = {
     ANDROID_LOG_ERROR,
     ANDROID_LOG_FATAL
 };
-#endif /* SDL_PLATFORM_ANDROID */
+#endif /* __ANDROID__ */
 
-void SDL_InitLog(void)
+void SDL_LogInit(void)
 {
     if (!log_function_mutex) {
         /* if this fails we'll try to continue without it. */
@@ -115,16 +110,16 @@ void SDL_InitLog(void)
     }
 }
 
-void SDL_QuitLog(void)
+void SDL_LogQuit(void)
 {
-    SDL_ResetLogPriorities();
+    SDL_LogResetPriorities();
     if (log_function_mutex) {
         SDL_DestroyMutex(log_function_mutex);
         log_function_mutex = NULL;
     }
 }
 
-void SDL_SetLogPriorities(SDL_LogPriority priority)
+void SDL_LogSetAllPriority(SDL_LogPriority priority)
 {
     SDL_LogLevel *entry;
 
@@ -136,7 +131,7 @@ void SDL_SetLogPriorities(SDL_LogPriority priority)
     SDL_forced_priority_level = priority;
 }
 
-void SDL_SetLogPriority(int category, SDL_LogPriority priority)
+void SDL_LogSetPriority(int category, SDL_LogPriority priority)
 {
     SDL_LogLevel *entry;
 
@@ -273,7 +268,7 @@ static SDL_LogPriority SDL_GetDefaultLogPriority(int category)
     }
 }
 
-SDL_LogPriority SDL_GetLogPriority(int category)
+SDL_LogPriority SDL_LogGetPriority(int category)
 {
     SDL_LogLevel *entry;
 
@@ -290,7 +285,7 @@ SDL_LogPriority SDL_GetLogPriority(int category)
     return SDL_GetDefaultLogPriority(category);
 }
 
-void SDL_ResetLogPriorities(void)
+void SDL_LogResetPriorities(void)
 {
     SDL_LogLevel *entry;
 
@@ -374,7 +369,7 @@ void SDL_LogMessage(int category, SDL_LogPriority priority, SDL_PRINTF_FORMAT_ST
     va_end(ap);
 }
 
-#ifdef SDL_PLATFORM_ANDROID
+#ifdef __ANDROID__
 static const char *GetCategoryPrefix(int category)
 {
     if (category < SDL_LOG_CATEGORY_RESERVED1) {
@@ -385,9 +380,9 @@ static const char *GetCategoryPrefix(int category)
     }
     return "CUSTOM";
 }
-#endif /* SDL_PLATFORM_ANDROID */
+#endif /* __ANDROID__ */
 
-void SDL_LogMessageV(int category, SDL_LogPriority priority, SDL_PRINTF_FORMAT_STRING const char *fmt, va_list ap)
+void SDL_LogMessageV(int category, SDL_LogPriority priority, const char *fmt, va_list ap)
 {
     char *message = NULL;
     char stack_buf[SDL_MAX_LOG_MESSAGE_STACK];
@@ -406,7 +401,7 @@ void SDL_LogMessageV(int category, SDL_LogPriority priority, SDL_PRINTF_FORMAT_S
     }
 
     /* See if we want to do anything with this message */
-    if (priority < SDL_GetLogPriority(category)) {
+    if (priority < SDL_LogGetPriority(category)) {
         return;
     }
 
@@ -456,7 +451,7 @@ void SDL_LogMessageV(int category, SDL_LogPriority priority, SDL_PRINTF_FORMAT_S
     }
 }
 
-#if defined(SDL_PLATFORM_WIN32) && !defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_GDK)
+#if defined(__WIN32__) && !defined(HAVE_STDIO_H) && !defined(__WINRT__) && !defined(__GDK__)
 /* Flag tracking the attachment of the console: 0=unattached, 1=attached to a console, 2=attached to a file, -1=error */
 static int consoleAttached = 0;
 
@@ -467,7 +462,7 @@ static HANDLE stderrHandle = NULL;
 static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority priority,
                                   const char *message)
 {
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINRT) || defined(SDL_PLATFORM_GDK)
+#if defined(__WIN32__) || defined(__WINRT__) || defined(__GDK__)
     /* Way too many allocations here, urgh */
     /* Note: One can't call SDL_SetError here, since that function itself logs. */
     {
@@ -476,7 +471,7 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
         LPTSTR tstr;
         SDL_bool isstack;
 
-#if !defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_GDK)
+#if !defined(HAVE_STDIO_H) && !defined(__WINRT__) && !defined(__GDK__)
         BOOL attachResult;
         DWORD attachError;
         DWORD charsWritten;
@@ -515,7 +510,7 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
                 }
             }
         }
-#endif /* !defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_GDK) */
+#endif /* !defined(HAVE_STDIO_H) && !defined(__WINRT__) && !defined(__GDK__) */
 
         length = SDL_strlen(SDL_priority_prefixes[priority]) + 2 + SDL_strlen(message) + 1 + 1 + 1;
         output = SDL_small_alloc(char, length, &isstack);
@@ -525,7 +520,7 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
         /* Output to debugger */
         OutputDebugString(tstr);
 
-#if !defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_GDK)
+#if !defined(HAVE_STDIO_H) && !defined(__WINRT__) && !defined(__GDK__)
         /* Screen output to stderr, if console was attached. */
         if (consoleAttached == 1) {
             if (!WriteConsole(stderrHandle, tstr, (DWORD)SDL_tcslen(tstr), &charsWritten, NULL)) {
@@ -540,19 +535,19 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
                 OutputDebugString(TEXT("Error calling WriteFile\r\n"));
             }
         }
-#endif /* !defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_GDK) */
+#endif /* !defined(HAVE_STDIO_H) && !defined(__WINRT__) && !defined(__GDK__) */
 
         SDL_free(tstr);
         SDL_small_free(output, isstack);
     }
-#elif defined(SDL_PLATFORM_ANDROID)
+#elif defined(__ANDROID__)
     {
         char tag[32];
 
         SDL_snprintf(tag, SDL_arraysize(tag), "SDL/%s", GetCategoryPrefix(category));
         __android_log_write(SDL_android_priority[priority], tag, message);
     }
-#elif defined(SDL_PLATFORM_APPLE) && (defined(SDL_VIDEO_DRIVER_COCOA) || defined(SDL_VIDEO_DRIVER_UIKIT))
+#elif defined(__APPLE__) && (defined(SDL_VIDEO_DRIVER_COCOA) || defined(SDL_VIDEO_DRIVER_UIKIT))
     /* Technically we don't need Cocoa/UIKit, but that's where this function is defined for now.
      */
     extern void SDL_NSLog(const char *prefix, const char *text);
@@ -560,7 +555,7 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
         SDL_NSLog(SDL_priority_prefixes[priority], message);
         return;
     }
-#elif defined(SDL_PLATFORM_PSP) || defined(SDL_PLATFORM_PS2)
+#elif defined(__PSP__) || defined(__PS2__)
     {
         FILE *pFile;
         pFile = fopen("SDL_Log.txt", "a");
@@ -569,7 +564,7 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
             (void)fclose(pFile);
         }
     }
-#elif defined(SDL_PLATFORM_VITA)
+#elif defined(__VITA__)
     {
         FILE *pFile;
         pFile = fopen("ux0:/data/SDL_Log.txt", "a");
@@ -578,7 +573,7 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
             (void)fclose(pFile);
         }
     }
-#elif defined(SDL_PLATFORM_3DS)
+#elif defined(__3DS__)
     {
         FILE *pFile;
         pFile = fopen("sdmc:/3ds/SDL_Log.txt", "a");
@@ -589,12 +584,15 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
     }
 #endif
 #if defined(HAVE_STDIO_H) && \
-    !(defined(SDL_PLATFORM_APPLE) && (defined(SDL_VIDEO_DRIVER_COCOA) || defined(SDL_VIDEO_DRIVER_UIKIT)))
-    (void)fprintf(stderr, "%s: %s\n", SDL_priority_prefixes[priority], message);
+    !(defined(__APPLE__) && (defined(SDL_VIDEO_DRIVER_COCOA) || defined(SDL_VIDEO_DRIVER_UIKIT)))
+    fprintf(stderr, "%s: %s\n", SDL_priority_prefixes[priority], message);
+#ifdef __NACL__
+    fflush(stderr);
+#endif
 #endif
 }
 
-void SDL_GetLogOutputFunction(SDL_LogOutputFunction *callback, void **userdata)
+void SDL_LogGetOutputFunction(SDL_LogOutputFunction *callback, void **userdata)
 {
     if (callback) {
         *callback = SDL_log_function;
@@ -604,8 +602,10 @@ void SDL_GetLogOutputFunction(SDL_LogOutputFunction *callback, void **userdata)
     }
 }
 
-void SDL_SetLogOutputFunction(SDL_LogOutputFunction callback, void *userdata)
+void SDL_LogSetOutputFunction(SDL_LogOutputFunction callback, void *userdata)
 {
     SDL_log_function = callback;
     SDL_log_userdata = userdata;
 }
+
+/* vi: set ts=4 sw=4 expandtab: */
