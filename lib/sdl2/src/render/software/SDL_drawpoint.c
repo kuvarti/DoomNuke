@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 #if SDL_VIDEO_RENDER_SW
 
@@ -32,7 +32,7 @@ int SDL_DrawPoint(SDL_Surface *dst, int x, int y, Uint32 color)
     }
 
     /* This function doesn't work on surfaces < 8 bpp */
-    if (dst->format->bits_per_pixel < 8) {
+    if (dst->format->BitsPerPixel < 8) {
         return SDL_SetError("SDL_DrawPoint(): Unsupported surface format");
     }
 
@@ -43,7 +43,7 @@ int SDL_DrawPoint(SDL_Surface *dst, int x, int y, Uint32 color)
         return 0;
     }
 
-    switch (dst->format->bytes_per_pixel) {
+    switch (dst->format->BytesPerPixel) {
     case 1:
         DRAW_FASTSETPIXELXY1(x, y);
         break;
@@ -72,7 +72,7 @@ int SDL_DrawPoints(SDL_Surface *dst, const SDL_Point *points, int count,
     }
 
     /* This function doesn't work on surfaces < 8 bpp */
-    if (dst->format->bits_per_pixel < 8) {
+    if (dst->format->BitsPerPixel < 8) {
         return SDL_SetError("SDL_DrawPoints(): Unsupported surface format");
     }
 
@@ -89,7 +89,7 @@ int SDL_DrawPoints(SDL_Surface *dst, const SDL_Point *points, int count,
             continue;
         }
 
-        switch (dst->format->bytes_per_pixel) {
+        switch (dst->format->BytesPerPixel) {
         case 1:
             DRAW_FASTSETPIXELXY1(x, y);
             break;
@@ -107,3 +107,5 @@ int SDL_DrawPoints(SDL_Surface *dst, const SDL_Point *points, int count,
 }
 
 #endif /* SDL_VIDEO_RENDER_SW */
+
+/* vi: set ts=4 sw=4 expandtab: */

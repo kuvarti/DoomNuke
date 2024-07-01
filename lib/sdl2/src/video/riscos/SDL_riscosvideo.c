@@ -18,15 +18,15 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 #ifdef SDL_VIDEO_DRIVER_RISCOS
 
+#include "SDL_video.h"
+#include "SDL_mouse.h"
 #include "../SDL_sysvideo.h"
 #include "../SDL_pixels_c.h"
 #include "../../events/SDL_events_c.h"
-#include "../../events/SDL_keyboard_c.h"
-#include "../../events/SDL_mouse_c.h"
 
 #include "SDL_riscosvideo.h"
 #include "SDL_riscosevents_c.h"
@@ -39,8 +39,8 @@
 #define RISCOSVID_DRIVER_NAME "riscos"
 
 /* Initialization/Query functions */
-static int RISCOS_VideoInit(SDL_VideoDevice *_this);
-static void RISCOS_VideoQuit(SDL_VideoDevice *_this);
+static int RISCOS_VideoInit(_THIS);
+static void RISCOS_VideoQuit(_THIS);
 
 /* RISC OS driver bootstrap functions */
 
@@ -53,22 +53,24 @@ static void RISCOS_DeleteDevice(SDL_VideoDevice *device)
 static SDL_VideoDevice *RISCOS_CreateDevice(void)
 {
     SDL_VideoDevice *device;
-    SDL_VideoData *data;
+    SDL_VideoData *phdata;
 
     /* Initialize all variables that we clean on shutdown */
     device = (SDL_VideoDevice *)SDL_calloc(1, sizeof(SDL_VideoDevice));
     if (!device) {
+        SDL_OutOfMemory();
         return 0;
     }
 
     /* Initialize internal data */
-    data = (SDL_VideoData *)SDL_calloc(1, sizeof(SDL_VideoData));
-    if (!data) {
+    phdata = (SDL_VideoData *)SDL_calloc(1, sizeof(SDL_VideoData));
+    if (!phdata) {
+        SDL_OutOfMemory();
         SDL_free(device);
         return NULL;
     }
 
-    device->driverdata = data;
+    device->driverdata = phdata;
 
     /* Set the function pointers */
     device->VideoInit = RISCOS_VideoInit;
@@ -80,15 +82,13 @@ static SDL_VideoDevice *RISCOS_CreateDevice(void)
 
     device->CreateSDLWindow = RISCOS_CreateWindow;
     device->DestroyWindow = RISCOS_DestroyWindow;
+    device->GetWindowWMInfo = RISCOS_GetWindowWMInfo;
 
     device->CreateWindowFramebuffer = RISCOS_CreateWindowFramebuffer;
     device->UpdateWindowFramebuffer = RISCOS_UpdateWindowFramebuffer;
     device->DestroyWindowFramebuffer = RISCOS_DestroyWindowFramebuffer;
 
     device->free = RISCOS_DeleteDevice;
-
-    /* TODO: Support windowed mode */
-    device->device_caps = VIDEO_DEVICE_CAPS_FULLSCREEN_ONLY;
 
     return device;
 }
@@ -99,10 +99,8 @@ VideoBootStrap RISCOS_bootstrap = {
     RISCOS_ShowMessageBox
 };
 
-static int RISCOS_VideoInit(SDL_VideoDevice *_this)
+static int RISCOS_VideoInit(_THIS)
 {
-    SDL_VideoData *data = _this->driverdata;
-
     if (RISCOS_InitEvents(_this) < 0) {
         return -1;
     }
@@ -110,10 +108,6 @@ static int RISCOS_VideoInit(SDL_VideoDevice *_this)
     if (RISCOS_InitMouse(_this) < 0) {
         return -1;
     }
-
-    /* Assume we have a mouse and keyboard */
-    SDL_AddKeyboard(SDL_DEFAULT_KEYBOARD_ID, NULL, SDL_FALSE);
-    SDL_AddMouse(SDL_DEFAULT_MOUSE_ID, NULL, SDL_FALSE);
 
     if (RISCOS_InitModes(_this) < 0) {
         return -1;
@@ -123,9 +117,11 @@ static int RISCOS_VideoInit(SDL_VideoDevice *_this)
     return 0;
 }
 
-static void RISCOS_VideoQuit(SDL_VideoDevice *_this)
+static void RISCOS_VideoQuit(_THIS)
 {
     RISCOS_QuitEvents(_this);
 }
 
 #endif /* SDL_VIDEO_DRIVER_RISCOS */
+
+/* vi: set ts=4 sw=4 expandtab: */

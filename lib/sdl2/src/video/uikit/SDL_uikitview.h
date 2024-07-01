@@ -23,7 +23,9 @@
 
 #include "../SDL_sysvideo.h"
 
-#if !defined(SDL_PLATFORM_TVOS) && defined(__IPHONE_13_4)
+#include "SDL_touch.h"
+
+#if !TARGET_OS_TV && defined(__IPHONE_13_4)
 @interface SDL_uikitview : UIView <UIPointerInteractionDelegate>
 #else
 @interface SDL_uikitview : UIView
@@ -33,9 +35,9 @@
 
 - (void)setSDLWindow:(SDL_Window *)window;
 
-#if !defined(SDL_PLATFORM_TVOS) && defined(__IPHONE_13_4)
+#if !TARGET_OS_TV && defined(__IPHONE_13_4)
 - (UIPointerRegion *)pointerInteraction:(UIPointerInteraction *)interaction regionForRequest:(UIPointerRegionRequest *)request defaultRegion:(UIPointerRegion *)defaultRegion API_AVAILABLE(ios(13.4));
-- (UIPointerStyle *)pointerInteraction:(UIPointerInteraction *)interaction styleForRegion:(UIPointerRegion *)region API_AVAILABLE(ios(13.4));
+- (UIPointerStyle *)pointerInteraction:(UIPointerInteraction *)interaction styleForRegion:(UIPointerRegion *)region  API_AVAILABLE(ios(13.4));
 #endif
 
 - (CGPoint)touchLocation:(UITouch *)touch shouldNormalize:(BOOL)normalize;
@@ -44,3 +46,5 @@
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event;
 
 @end
+
+/* vi: set ts=4 sw=4 expandtab: */

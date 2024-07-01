@@ -19,8 +19,9 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "SDL_internal.h"
+#include "../SDL_internal.h"
 #include "SDL_syslocale.h"
+#include "SDL_hints.h"
 
 static SDL_Locale *build_locales_from_csv_string(char *csv)
 {
@@ -48,6 +49,7 @@ static SDL_Locale *build_locales_from_csv_string(char *csv)
 
     loc = retval = (SDL_Locale *)SDL_calloc(1, alloclen);
     if (!retval) {
+        SDL_OutOfMemory();
         return NULL; /* oh well */
     }
     ptr = (char *)(retval + num_locales);
@@ -97,3 +99,5 @@ SDL_Locale *SDL_GetPreferredLocales(void)
     }
     return build_locales_from_csv_string(locbuf);
 }
+
+/* vi: set ts=4 sw=4 expandtab: */

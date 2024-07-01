@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../SDL_internal.h"
 
 /* This is the software implementation of the YUV texture support */
 
@@ -26,8 +26,9 @@
 
 #include "SDL_yuv_sw_c.h"
 #include "../video/SDL_yuv_c.h"
+#include "SDL_cpuinfo.h"
 
-SDL_SW_YUVTexture *SDL_SW_CreateYUVTexture(SDL_PixelFormatEnum format, int w, int h)
+SDL_SW_YUVTexture *SDL_SW_CreateYUVTexture(Uint32 format, int w, int h)
 {
     SDL_SW_YUVTexture *swdata;
 
@@ -47,6 +48,7 @@ SDL_SW_YUVTexture *SDL_SW_CreateYUVTexture(SDL_PixelFormatEnum format, int w, in
 
     swdata = (SDL_SW_YUVTexture *)SDL_calloc(1, sizeof(*swdata));
     if (!swdata) {
+        SDL_OutOfMemory();
         return NULL;
     }
 
@@ -58,11 +60,13 @@ SDL_SW_YUVTexture *SDL_SW_CreateYUVTexture(SDL_PixelFormatEnum format, int w, in
         size_t dst_size;
         if (SDL_CalculateYUVSize(format, w, h, &dst_size, NULL) < 0) {
             SDL_SW_DestroyYUVTexture(swdata);
+            SDL_OutOfMemory();
             return NULL;
         }
-        swdata->pixels = (Uint8 *)SDL_aligned_alloc(SDL_GetSIMDAlignment(), dst_size);
+        swdata->pixels = (Uint8 *)SDL_SIMDAlloc(dst_size);
         if (!swdata->pixels) {
             SDL_SW_DestroyYUVTexture(swdata);
+            SDL_OutOfMemory();
             return NULL;
         }
     }
@@ -94,7 +98,7 @@ SDL_SW_YUVTexture *SDL_SW_CreateYUVTexture(SDL_PixelFormatEnum format, int w, in
         break;
 
     default:
-        SDL_assert(!"We should never get here (caught above)");
+        SDL_assert(0 && "We should never get here (caught above)");
         break;
     }
 
@@ -211,9 +215,7 @@ int SDL_SW_UpdateYUVTexture(SDL_SW_YUVTexture *swdata, const SDL_Rect *rect,
                 dst += 2 * ((swdata->w + 1) / 2);
             }
         }
-    } break;
-    default:
-        return SDL_SetError("Unsupported YUV format");
+    }
     }
     return 0;
 }
@@ -318,8 +320,6 @@ int SDL_SW_LockYUVTexture(SDL_SW_YUVTexture *swdata, const SDL_Rect *rect,
             return SDL_SetError("YV12, IYUV, NV12, NV21 textures only support full surface locks");
         }
         break;
-    default:
-        return SDL_SetError("Unsupported YUV format");
     }
 
     if (rect) {
@@ -336,14 +336,14 @@ void SDL_SW_UnlockYUVTexture(SDL_SW_YUVTexture *swdata)
 }
 
 int SDL_SW_CopyYUVToRGB(SDL_SW_YUVTexture *swdata, const SDL_Rect *srcrect,
-                        SDL_PixelFormatEnum target_format, int w, int h, void *pixels,
+                        Uint32 target_format, int w, int h, void *pixels,
                         int pitch)
 {
     int stretch;
 
     /* Make sure we're set up to display in the desired format */
     if (target_format != swdata->target_format && swdata->display) {
-        SDL_DestroySurface(swdata->display);
+        SDL_FreeSurface(swdata->display);
         swdata->display = NULL;
     }
 
@@ -359,19 +359,32 @@ int SDL_SW_CopyYUVToRGB(SDL_SW_YUVTexture *swdata, const SDL_Rect *srcrect,
         stretch = 1;
     }
     if (stretch) {
+        int bpp;
+        Uint32 Rmask, Gmask, Bmask, Amask;
+
         if (swdata->display) {
             swdata->display->w = w;
             swdata->display->h = h;
             swdata->display->pixels = pixels;
             swdata->display->pitch = pitch;
         } else {
-            swdata->display = SDL_CreateSurfaceFrom(pixels, w, h, pitch, target_format);
+            /* This must have succeeded in SDL_SW_SetupYUVDisplay() earlier */
+            SDL_PixelFormatEnumToMasks(target_format, &bpp, &Rmask, &Gmask,
+                                       &Bmask, &Amask);
+            swdata->display =
+                SDL_CreateRGBSurfaceFrom(pixels, w, h, bpp, pitch, Rmask,
+                                         Gmask, Bmask, Amask);
             if (!swdata->display) {
                 return -1;
             }
         }
         if (!swdata->stretch) {
-            swdata->stretch = SDL_CreateSurface(swdata->w, swdata->h, target_format);
+            /* This must have succeeded in SDL_SW_SetupYUVDisplay() earlier */
+            SDL_PixelFormatEnumToMasks(target_format, &bpp, &Rmask, &Gmask,
+                                       &Bmask, &Amask);
+            swdata->stretch =
+                SDL_CreateRGBSurface(0, swdata->w, swdata->h, bpp, Rmask,
+                                     Gmask, Bmask, Amask);
             if (!swdata->stretch) {
                 return -1;
             }
@@ -386,7 +399,7 @@ int SDL_SW_CopyYUVToRGB(SDL_SW_YUVTexture *swdata, const SDL_Rect *srcrect,
     }
     if (stretch) {
         SDL_Rect rect = *srcrect;
-        SDL_SoftStretch(swdata->stretch, &rect, swdata->display, NULL, SDL_SCALEMODE_NEAREST);
+        SDL_SoftStretch(swdata->stretch, &rect, swdata->display, NULL);
     }
     return 0;
 }
@@ -394,11 +407,13 @@ int SDL_SW_CopyYUVToRGB(SDL_SW_YUVTexture *swdata, const SDL_Rect *srcrect,
 void SDL_SW_DestroyYUVTexture(SDL_SW_YUVTexture *swdata)
 {
     if (swdata) {
-        SDL_aligned_free(swdata->pixels);
-        SDL_DestroySurface(swdata->stretch);
-        SDL_DestroySurface(swdata->display);
+        SDL_SIMDFree(swdata->pixels);
+        SDL_FreeSurface(swdata->stretch);
+        SDL_FreeSurface(swdata->display);
         SDL_free(swdata);
     }
 }
 
 #endif /* SDL_HAVE_YUV */
+
+/* vi: set ts=4 sw=4 expandtab: */

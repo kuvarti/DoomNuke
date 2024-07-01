@@ -18,10 +18,11 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../SDL_internal.h"
 
 #if SDL_HAVE_BLIT_0
 
+#include "SDL_video.h"
 #include "SDL_blit.h"
 
 /* Functions to blit from bitmaps to other surfaces */
@@ -625,7 +626,7 @@ SDL_FORCE_INLINE void BlitBtoNAlpha(SDL_BlitInfo *info, const Uint32 srcbpp)
     const unsigned A = info->a;
 
     /* Set up some basic variables */
-    dstbpp = dstfmt->bytes_per_pixel;
+    dstbpp = dstfmt->BytesPerPixel;
     if (srcbpp == 4)
         srcskip += width - (width + 1) / 2;
     else if (srcbpp == 2)
@@ -703,7 +704,7 @@ SDL_FORCE_INLINE void BlitBtoNAlphaKey(SDL_BlitInfo *info, const Uint32 srcbpp)
     Uint32 ckey = info->colorkey;
 
     /* Set up some basic variables */
-    dstbpp = dstfmt->bytes_per_pixel;
+    dstbpp = dstfmt->BytesPerPixel;
     if (srcbpp == 4)
         srcskip += width - (width + 1) / 2;
     else if (srcbpp == 2)
@@ -920,10 +921,10 @@ SDL_BlitFunc SDL_CalculateBlit0(SDL_Surface *surface)
 {
     int which;
 
-    if (surface->map->dst->format->bits_per_pixel < 8) {
+    if (surface->map->dst->format->BitsPerPixel < 8) {
         which = 0;
     } else {
-        which = surface->map->dst->format->bytes_per_pixel;
+        which = surface->map->dst->format->BytesPerPixel;
     }
 
     if (SDL_PIXELTYPE(surface->format->format) == SDL_PIXELTYPE_INDEX1) {
@@ -981,3 +982,5 @@ SDL_BlitFunc SDL_CalculateBlit0(SDL_Surface *surface)
 }
 
 #endif /* SDL_HAVE_BLIT_0 */
+
+/* vi: set ts=4 sw=4 expandtab: */

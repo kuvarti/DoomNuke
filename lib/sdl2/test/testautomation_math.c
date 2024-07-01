@@ -5,9 +5,8 @@
 #include <float.h>
 #include <math.h>
 
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_test.h>
-#include "testautomation_suites.h"
+#include "SDL.h"
+#include "SDL_test.h"
 
 /* ================= Test Constants ================== */
 
@@ -25,7 +24,7 @@
 #define EULER M_E
 #endif
 
-#define IS_INFINITY(V) isinf(V)
+#define IS_INFINITY(V) fpclassify(V) == FP_INFINITE
 
 /* Square root of 3 (used in atan2) */
 #define SQRT3 1.7320508075688771931766041234368458390235900878906250
@@ -50,6 +49,12 @@ typedef struct
     double expected;
 } dd_to_d;
 
+#define DD_TO_D_CASE(IDX, X, Y, E) do { \
+        cases[IDX].x_input = (X);       \
+        cases[IDX].y_input = (Y);       \
+        cases[IDX].expected = (E);      \
+    } while (0)
+
 /*
     NB: You cannot create an array of these structures containing INFINITY or NAN.
     On platforms such as OS/2, they are defined as 'extern const double' making them
@@ -62,7 +67,7 @@ typedef double(SDLCALL *d_to_d_func)(double);
 typedef double(SDLCALL *dd_to_d_func)(double, double);
 
 /**
- * Runs all the cases on a given function with a signature double -> double.
+ * \brief Runs all the cases on a given function with a signature double -> double.
  * The result is expected to be exact.
  *
  * \param func_name a printable name for the tested function.
@@ -88,7 +93,7 @@ helper_dtod(const char *func_name, d_to_d_func func,
 }
 
 /**
- * Runs all the cases on a given function with a signature double -> double.
+ * \brief Runs all the cases on a given function with a signature double -> double.
  * Checks if the result between expected +/- EPSILON.
  *
  * \param func_name a printable name for the tested function.
@@ -123,7 +128,7 @@ helper_dtod_inexact(const char *func_name, d_to_d_func func,
 }
 
 /**
- * Runs all the cases on a given function with a signature
+ * \brief Runs all the cases on a given function with a signature
  * (double, double) -> double. The result is expected to be exact.
  *
  * \param func_name a printable name for the tested function.
@@ -138,6 +143,8 @@ helper_ddtod(const char *func_name, dd_to_d_func func,
     Uint32 i;
     for (i = 0; i < cases_size; i++) {
         const double result = func(cases[i].x_input, cases[i].y_input);
+        /* By using the result as input, the compiler is less likely to use higher precision floating point number */
+        (void)SDL_sin(result);
         SDLTest_AssertCheck(result == cases[i].expected,
                             "%s(%f,%f), expected %f, got %f",
                             func_name,
@@ -149,7 +156,7 @@ helper_ddtod(const char *func_name, dd_to_d_func func,
 }
 
 /**
- * Runs all the cases on a given function with a signature
+ * \brief Runs all the cases on a given function with a signature
  * (double, double) -> double. Checks if the result between expected +/- EPSILON.
  *
  * \param func_name a printable name for the tested function.
@@ -185,7 +192,7 @@ helper_ddtod_inexact(const char *func_name, dd_to_d_func func,
 }
 
 /**
- * Runs a range of values on a given function with a signature double -> double
+ * \brief Runs a range of values on a given function with a signature double -> double
  *
  * This function is only meant to test functions that returns the input value if it is
  * integral: f(x) -> x for x in N.
@@ -1288,24 +1295,6 @@ log10_regularCases(void *args)
     return helper_dtod_inexact("Log10", SDL_log10, regular_cases, SDL_arraysize(regular_cases));
 }
 
-/* SDL_modf tests functions */
-
-static int
-modf_baseCases(void *args)
-{
-    double fractional, integral;
-
-    fractional = SDL_modf(1.25, &integral);
-    SDLTest_AssertCheck(integral == 1.0,
-                        "modf(%f), expected integral %f, got %f",
-                        1.25, 1.0, integral);
-    SDLTest_AssertCheck(fractional == 0.25,
-                        "modf(%f), expected fractional %f, got %f",
-                        1.25, 0.25, fractional);
-
-    return TEST_COMPLETED;
-}
-
 /* SDL_pow tests functions */
 
 /* Tests with positive and negative infinities as exponents */
@@ -1999,10 +1988,10 @@ static int
 cos_regularCases(void *args)
 {
     const d_to_d regular_cases[] = {
-        { -SDL_PI_D, -1.0 },
+        { -M_PI, -1.0 },
         { -0.0, 1.0 },
         { 0.0, 1.0 },
-        { SDL_PI_D, -1.0 }
+        { M_PI, -1.0 }
     };
     return helper_dtod("Cos", SDL_cos, regular_cases, SDL_arraysize(regular_cases));
 }
@@ -2015,24 +2004,24 @@ static int
 cos_precisionTest(void *args)
 {
     const d_to_d precision_cases[] = {
-        { SDL_PI_D * 1.0 / 10.0, 0.9510565162951535 },
-        { SDL_PI_D * 2.0 / 10.0, 0.8090169943749475 },
-        { SDL_PI_D * 3.0 / 10.0, 0.5877852522924731 },
-        { SDL_PI_D * 4.0 / 10.0, 0.30901699437494745 },
-        { SDL_PI_D * 5.0 / 10.0, 0.0 },
-        { SDL_PI_D * 6.0 / 10.0, -0.30901699437494734 },
-        { SDL_PI_D * 7.0 / 10.0, -0.587785252292473 },
-        { SDL_PI_D * 8.0 / 10.0, -0.8090169943749473 },
-        { SDL_PI_D * 9.0 / 10.0, -0.9510565162951535 },
-        { SDL_PI_D * -1.0 / 10.0, 0.9510565162951535 },
-        { SDL_PI_D * -2.0 / 10.0, 0.8090169943749475 },
-        { SDL_PI_D * -3.0 / 10.0, 0.5877852522924731 },
-        { SDL_PI_D * -4.0 / 10.0, 0.30901699437494745 },
-        { SDL_PI_D * -5.0 / 10.0, 0.0 },
-        { SDL_PI_D * -6.0 / 10.0, -0.30901699437494734 },
-        { SDL_PI_D * -7.0 / 10.0, -0.587785252292473 },
-        { SDL_PI_D * -8.0 / 10.0, -0.8090169943749473 },
-        { SDL_PI_D * -9.0 / 10.0, -0.9510565162951535 }
+        { M_PI * 1.0 / 10.0, 0.9510565162951535 },
+        { M_PI * 2.0 / 10.0, 0.8090169943749475 },
+        { M_PI * 3.0 / 10.0, 0.5877852522924731 },
+        { M_PI * 4.0 / 10.0, 0.30901699437494745 },
+        { M_PI * 5.0 / 10.0, 0.0 },
+        { M_PI * 6.0 / 10.0, -0.30901699437494734 },
+        { M_PI * 7.0 / 10.0, -0.587785252292473 },
+        { M_PI * 8.0 / 10.0, -0.8090169943749473 },
+        { M_PI * 9.0 / 10.0, -0.9510565162951535 },
+        { M_PI * -1.0 / 10.0, 0.9510565162951535 },
+        { M_PI * -2.0 / 10.0, 0.8090169943749475 },
+        { M_PI * -3.0 / 10.0, 0.5877852522924731 },
+        { M_PI * -4.0 / 10.0, 0.30901699437494745 },
+        { M_PI * -5.0 / 10.0, 0.0 },
+        { M_PI * -6.0 / 10.0, -0.30901699437494734 },
+        { M_PI * -7.0 / 10.0, -0.587785252292473 },
+        { M_PI * -8.0 / 10.0, -0.8090169943749473 },
+        { M_PI * -9.0 / 10.0, -0.9510565162951535 }
     };
     return helper_dtod_inexact("Cos", SDL_cos, precision_cases, SDL_arraysize(precision_cases));
 }
@@ -2116,10 +2105,10 @@ static int
 sin_regularCases(void *args)
 {
     const d_to_d regular_cases[] = {
-        { -SDL_PI_D / 2, -1.0 },
+        { -M_PI / 2, -1.0 },
         { -0.0, -0.0 },
         { 0.0, 0.0 },
-        { SDL_PI_D / 2, 1.0 }
+        { M_PI / 2, 1.0 }
     };
     return helper_dtod("Sin", SDL_sin, regular_cases, SDL_arraysize(regular_cases));
 }
@@ -2133,24 +2122,24 @@ static int
 sin_precisionTest(void *args)
 {
     const d_to_d precision_cases[] = {
-        { SDL_PI_D * 1.0 / 10.0, 0.3090169943749474 },
-        { SDL_PI_D * 2.0 / 10.0, 0.5877852522924731 },
-        { SDL_PI_D * 3.0 / 10.0, 0.8090169943749475 },
-        { SDL_PI_D * 4.0 / 10.0, 0.9510565162951535 },
-        { SDL_PI_D * 6.0 / 10.0, 0.9510565162951536 },
-        { SDL_PI_D * 7.0 / 10.0, 0.8090169943749475 },
-        { SDL_PI_D * 8.0 / 10.0, 0.5877852522924732 },
-        { SDL_PI_D * 9.0 / 10.0, 0.3090169943749475 },
-        { SDL_PI_D, 0.0 },
-        { SDL_PI_D * -1.0 / 10.0, -0.3090169943749474 },
-        { SDL_PI_D * -2.0 / 10.0, -0.5877852522924731 },
-        { SDL_PI_D * -3.0 / 10.0, -0.8090169943749475 },
-        { SDL_PI_D * -4.0 / 10.0, -0.9510565162951535 },
-        { SDL_PI_D * -6.0 / 10.0, -0.9510565162951536 },
-        { SDL_PI_D * -7.0 / 10.0, -0.8090169943749475 },
-        { SDL_PI_D * -8.0 / 10.0, -0.5877852522924732 },
-        { SDL_PI_D * -9.0 / 10.0, -0.3090169943749475 },
-        { -SDL_PI_D, 0.0 },
+        { M_PI * 1.0 / 10.0, 0.3090169943749474 },
+        { M_PI * 2.0 / 10.0, 0.5877852522924731 },
+        { M_PI * 3.0 / 10.0, 0.8090169943749475 },
+        { M_PI * 4.0 / 10.0, 0.9510565162951535 },
+        { M_PI * 6.0 / 10.0, 0.9510565162951536 },
+        { M_PI * 7.0 / 10.0, 0.8090169943749475 },
+        { M_PI * 8.0 / 10.0, 0.5877852522924732 },
+        { M_PI * 9.0 / 10.0, 0.3090169943749475 },
+        { M_PI, 0.0 },
+        { M_PI * -1.0 / 10.0, -0.3090169943749474 },
+        { M_PI * -2.0 / 10.0, -0.5877852522924731 },
+        { M_PI * -3.0 / 10.0, -0.8090169943749475 },
+        { M_PI * -4.0 / 10.0, -0.9510565162951535 },
+        { M_PI * -6.0 / 10.0, -0.9510565162951536 },
+        { M_PI * -7.0 / 10.0, -0.8090169943749475 },
+        { M_PI * -8.0 / 10.0, -0.5877852522924732 },
+        { M_PI * -9.0 / 10.0, -0.3090169943749475 },
+        { -M_PI, 0.0 },
     };
     return helper_dtod_inexact("Sin", SDL_sin, precision_cases, SDL_arraysize(precision_cases));
 }
@@ -2249,26 +2238,26 @@ static int
 tan_precisionTest(void *args)
 {
     const d_to_d precision_cases[] = {
-        { SDL_PI_D * 1.0 / 11.0, 0.29362649293836673 },
-        { SDL_PI_D * 2.0 / 11.0, 0.642660977168331 },
-        { SDL_PI_D * 3.0 / 11.0, 1.1540615205330094 },
-        { SDL_PI_D * 4.0 / 11.0, 2.189694562989681 },
-        { SDL_PI_D * 5.0 / 11.0, 6.9551527717734745 },
-        { SDL_PI_D * 6.0 / 11.0, -6.955152771773481 },
-        { SDL_PI_D * 7.0 / 11.0, -2.189694562989682 },
-        { SDL_PI_D * 8.0 / 11.0, -1.1540615205330096 },
-        { SDL_PI_D * 9.0 / 11.0, -0.6426609771683314 },
-        { SDL_PI_D * 10.0 / 11.0, -0.2936264929383667 },
-        { SDL_PI_D * -1.0 / 11.0, -0.29362649293836673 },
-        { SDL_PI_D * -2.0 / 11.0, -0.642660977168331 },
-        { SDL_PI_D * -3.0 / 11.0, -1.1540615205330094 },
-        { SDL_PI_D * -4.0 / 11.0, -2.189694562989681 },
-        { SDL_PI_D * -5.0 / 11.0, -6.9551527717734745 },
-        { SDL_PI_D * -6.0 / 11.0, 6.955152771773481 },
-        { SDL_PI_D * -7.0 / 11.0, 2.189694562989682 },
-        { SDL_PI_D * -8.0 / 11.0, 1.1540615205330096 },
-        { SDL_PI_D * -9.0 / 11.0, 0.6426609771683314 },
-        { SDL_PI_D * -10.0 / 11.0, 0.2936264929383667 }
+        { M_PI * 1.0 / 11.0, 0.29362649293836673 },
+        { M_PI * 2.0 / 11.0, 0.642660977168331 },
+        { M_PI * 3.0 / 11.0, 1.1540615205330094 },
+        { M_PI * 4.0 / 11.0, 2.189694562989681 },
+        { M_PI * 5.0 / 11.0, 6.9551527717734745 },
+        { M_PI * 6.0 / 11.0, -6.955152771773481 },
+        { M_PI * 7.0 / 11.0, -2.189694562989682 },
+        { M_PI * 8.0 / 11.0, -1.1540615205330096 },
+        { M_PI * 9.0 / 11.0, -0.6426609771683314 },
+        { M_PI * 10.0 / 11.0, -0.2936264929383667 },
+        { M_PI * -1.0 / 11.0, -0.29362649293836673 },
+        { M_PI * -2.0 / 11.0, -0.642660977168331 },
+        { M_PI * -3.0 / 11.0, -1.1540615205330094 },
+        { M_PI * -4.0 / 11.0, -2.189694562989681 },
+        { M_PI * -5.0 / 11.0, -6.9551527717734745 },
+        { M_PI * -6.0 / 11.0, 6.955152771773481 },
+        { M_PI * -7.0 / 11.0, 2.189694562989682 },
+        { M_PI * -8.0 / 11.0, 1.1540615205330096 },
+        { M_PI * -9.0 / 11.0, 0.6426609771683314 },
+        { M_PI * -10.0 / 11.0, 0.2936264929383667 }
     };
     return helper_dtod_inexact("Tan", SDL_tan, precision_cases, SDL_arraysize(precision_cases));
 }
@@ -2290,9 +2279,9 @@ acos_limitCases(void *args)
                         1.0, 0.0, result);
 
     result = SDL_acos(-1.0);
-    SDLTest_AssertCheck(SDL_fabs(SDL_PI_D - result) <= EPSILON,
+    SDLTest_AssertCheck(SDL_fabs(M_PI - result) <= EPSILON,
                         "Acos(%f), expected %f, got %f",
-                        -1.0, SDL_PI_D, result);
+                        -1.0, M_PI, result);
 
     return TEST_COMPLETED;
 }
@@ -2377,14 +2366,14 @@ asin_limitCases(void *args)
     double result;
 
     result = SDL_asin(1.0);
-    SDLTest_AssertCheck(SDL_fabs(SDL_PI_D / 2.0 - result) <= EPSILON,
+    SDLTest_AssertCheck(SDL_fabs(M_PI / 2.0 - result) <= EPSILON,
                         "Asin(%f), expected %f, got %f",
-                        1.0, SDL_PI_D / 2.0, result);
+                        1.0, M_PI / 2.0, result);
 
     result = SDL_asin(-1.0);
-    SDLTest_AssertCheck(SDL_fabs(-SDL_PI_D / 2.0 - result) <= EPSILON,
+    SDLTest_AssertCheck(SDL_fabs(-M_PI / 2.0 - result) <= EPSILON,
                         "Asin(%f), expected %f, got %f",
-                        -1.0, -SDL_PI_D / 2.0, result);
+                        -1.0, -M_PI / 2.0, result);
 
     return TEST_COMPLETED;
 }
@@ -2469,16 +2458,16 @@ atan_limitCases(void *args)
     double result;
 
     result = SDL_atan(INFINITY);
-    SDLTest_AssertCheck((SDL_PI_D / 2.0) - EPSILON <= result &&
-                            result <= (SDL_PI_D / 2.0) + EPSILON,
+    SDLTest_AssertCheck((M_PI / 2.0) - EPSILON <= result &&
+                            result <= (M_PI / 2.0) + EPSILON,
                         "Atan(%f), expected %f, got %f",
-                        INFINITY, SDL_PI_D / 2.0, result);
+                        INFINITY, M_PI / 2.0, result);
 
     result = SDL_atan(-INFINITY);
-    SDLTest_AssertCheck((-SDL_PI_D / 2.0) - EPSILON <= result &&
-                            result <= (-SDL_PI_D / 2.0) + EPSILON,
+    SDLTest_AssertCheck((-M_PI / 2.0) - EPSILON <= result &&
+                            result <= (-M_PI / 2.0) + EPSILON,
                         "Atan(%f), expected %f, got %f",
-                        -INFINITY, -SDL_PI_D / 2.0, result);
+                        -INFINITY, -M_PI / 2.0, result);
 
     return TEST_COMPLETED;
 }
@@ -2566,8 +2555,8 @@ atan2_bothZeroCases(void *args)
     const dd_to_d cases[] = {
         { 0.0, 0.0, 0.0 },
         { -0.0, 0.0, -0.0 },
-        { 0.0, -0.0, SDL_PI_D },
-        { -0.0, -0.0, -SDL_PI_D },
+        { 0.0, -0.0, M_PI },
+        { -0.0, -0.0, -M_PI },
     };
     return helper_ddtod_inexact("SDL_atan2", SDL_atan2, cases, SDL_arraysize(cases));
 }
@@ -2584,9 +2573,9 @@ atan2_yZeroCases(void *args)
 {
     const dd_to_d cases[] = {
         { 0.0, 1.0, 0.0 },
-        { 0.0, -1.0, SDL_PI_D },
+        { 0.0, -1.0, M_PI },
         { -0.0, 1.0, -0.0 },
-        { -0.0, -1.0, -SDL_PI_D }
+        { -0.0, -1.0, -M_PI }
     };
     return helper_ddtod_inexact("SDL_atan2", SDL_atan2, cases, SDL_arraysize(cases));
 }
@@ -2599,10 +2588,10 @@ static int
 atan2_xZeroCases(void *args)
 {
     const dd_to_d cases[] = {
-        { 1.0, 0.0, SDL_PI_D / 2.0 },
-        { -1.0, 0.0, -SDL_PI_D / 2.0 },
-        { 1.0, -0.0, SDL_PI_D / 2.0 },
-        { -1.0, -0.0, -SDL_PI_D / 2.0 }
+        { 1.0, 0.0, M_PI / 2.0 },
+        { -1.0, 0.0, -M_PI / 2.0 },
+        { 1.0, -0.0, M_PI / 2.0 },
+        { -1.0, -0.0, -M_PI / 2.0 }
     };
     return helper_ddtod_inexact("SDL_atan2", SDL_atan2, cases, SDL_arraysize(cases));
 }
@@ -2620,29 +2609,12 @@ atan2_xZeroCases(void *args)
 static int
 atan2_bothInfCases(void *args)
 {
-    double result;
-
-    result = SDL_atan2(INFINITY, INFINITY);
-    SDLTest_AssertCheck(SDL_fabs(SDL_PI_D / 4.0 - result) <= EPSILON,
-                        "Atan2(%f,%f), expected %f, got %f",
-                        INFINITY, INFINITY, SDL_PI_D / 4.0, result);
-
-    result = SDL_atan2(INFINITY, -INFINITY);
-    SDLTest_AssertCheck(SDL_fabs(3.0 * SDL_PI_D / 4.0 - result) <= EPSILON,
-                        "Atan2(%f,%f), expected %f, got %f",
-                        INFINITY, -INFINITY, 3.0 * SDL_PI_D / 4.0, result);
-
-    result = SDL_atan2(-INFINITY, INFINITY);
-    SDLTest_AssertCheck(SDL_fabs(-SDL_PI_D / 4.0 - result) <= EPSILON,
-                        "Atan2(%f,%f), expected %f, got %f",
-                        -INFINITY, INFINITY, -SDL_PI_D / 4.0, result);
-
-    result = SDL_atan2(-INFINITY, -INFINITY);
-    SDLTest_AssertCheck(SDL_fabs(-3.0 * SDL_PI_D / 4.0 - result) <= EPSILON,
-                        "Atan2(%f,%f), expected %f, got %f",
-                        -INFINITY, -INFINITY, -3.0 * SDL_PI_D / 4.0, result);
-
-    return TEST_COMPLETED;
+    dd_to_d cases[4];
+    DD_TO_D_CASE(0,  INFINITY,  INFINITY,  1.0 * M_PI / 4.0);
+    DD_TO_D_CASE(1,  INFINITY, -INFINITY,  3.0 * M_PI / 4.0);
+    DD_TO_D_CASE(2, -INFINITY,  INFINITY, -1.0 * M_PI / 4.0);
+    DD_TO_D_CASE(3, -INFINITY, -INFINITY, -3.0 * M_PI / 4.0);
+    return helper_ddtod("SDL_atan2(bothInfCases)", SDL_atan2, cases, SDL_arraysize(cases));
 }
 
 /**
@@ -2652,29 +2624,12 @@ atan2_bothInfCases(void *args)
 static int
 atan2_yInfCases(void *args)
 {
-    double result;
-
-    result = SDL_atan2(INFINITY, 1.0);
-    SDLTest_AssertCheck(SDL_fabs(SDL_PI_D / 2.0 - result) <= EPSILON,
-                        "Atan2(%f,%f), expected %f, got %f",
-                        INFINITY, 1.0, SDL_PI_D / 2.0, result);
-
-    result = SDL_atan2(INFINITY, -1.0);
-    SDLTest_AssertCheck(SDL_fabs(SDL_PI_D / 2.0 - result) <= EPSILON,
-                        "Atan2(%f,%f), expected %f, got %f",
-                        INFINITY, -1.0, SDL_PI_D / 2.0, result);
-
-    result = SDL_atan2(-INFINITY, 1.0);
-    SDLTest_AssertCheck(SDL_fabs(-SDL_PI_D / 2.0 - result) <= EPSILON,
-                        "Atan2(%f,%f), expected %f, got %f",
-                        -INFINITY, 1.0, -SDL_PI_D / 2.0, result);
-
-    result = SDL_atan2(-INFINITY, -1.0);
-    SDLTest_AssertCheck(SDL_fabs(-SDL_PI_D / 2.0 - result) <= EPSILON,
-                        "Atan2(%f,%f), expected %f, got %f",
-                        -INFINITY, -1.0, -SDL_PI_D / 2.0, result);
-
-    return TEST_COMPLETED;
+    dd_to_d cases[4];
+    DD_TO_D_CASE(0,  INFINITY,  1.0,  1.0 * M_PI / 2.0);
+    DD_TO_D_CASE(1,  INFINITY, -1.0,  1.0 * M_PI / 2.0);
+    DD_TO_D_CASE(2, -INFINITY,  1.0, -1.0 * M_PI / 2.0);
+    DD_TO_D_CASE(3, -INFINITY, -1.0, -1.0 * M_PI / 2.0);
+    return helper_ddtod("SDL_atan2(atan2_yInfCases)", SDL_atan2, cases, SDL_arraysize(cases));
 }
 
 /**
@@ -2686,29 +2641,12 @@ atan2_yInfCases(void *args)
 static int
 atan2_xInfCases(void *args)
 {
-    double result;
-
-    result = SDL_atan2(1.0, INFINITY);
-    SDLTest_AssertCheck(0.0 == result,
-                        "Atan2(%f,%f), expected %f, got %f",
-                        1.0, INFINITY, 0.0, result);
-
-    result = SDL_atan2(-1.0, INFINITY);
-    SDLTest_AssertCheck(-0.0 == result,
-                        "Atan2(%f,%f), expected %f, got %f",
-                        -1.0, INFINITY, -0.0, result);
-
-    result = SDL_atan2(1.0, -INFINITY);
-    SDLTest_AssertCheck(SDL_fabs(SDL_PI_D - result) <= EPSILON,
-                        "Atan2(%f,%f), expected %f, got %f",
-                        1.0, -INFINITY, SDL_PI_D, result);
-
-    result = SDL_atan2(-1.0, -INFINITY);
-    SDLTest_AssertCheck(SDL_fabs(-SDL_PI_D - result) <= EPSILON,
-                        "Atan2(%f,%f), expected %f, got %f",
-                        -1.0, -INFINITY, -SDL_PI_D, result);
-
-    return TEST_COMPLETED;
+    dd_to_d cases[4];
+    DD_TO_D_CASE(0,  1.0,  INFINITY,  0.0);
+    DD_TO_D_CASE(1, -1.0,  INFINITY, -0.0);
+    DD_TO_D_CASE(2,  1.0, -INFINITY,  M_PI);
+    DD_TO_D_CASE(3, -1.0, -INFINITY, -M_PI);
+    return helper_ddtod("atan2_xInfCases(atan2_yInfCases)", SDL_atan2, cases, SDL_arraysize(cases));
 }
 
 /* Miscelanious cases */
@@ -2748,9 +2686,9 @@ static int
 atan2_topRightQuadrantTest(void *args)
 {
     const dd_to_d top_right_cases[] = {
-        { 1.0, 1.0, SDL_PI_D / 4.0 },
-        { SQRT3, 3.0, SDL_PI_D / 6.0 },
-        { SQRT3, 1.0, SDL_PI_D / 3.0 }
+        { 1.0, 1.0, M_PI / 4.0 },
+        { SQRT3, 3.0, M_PI / 6.0 },
+        { SQRT3, 1.0, M_PI / 3.0 }
     };
     return helper_ddtod_inexact("SDL_atan2", SDL_atan2, top_right_cases, SDL_arraysize(top_right_cases));
 }
@@ -2763,9 +2701,9 @@ static int
 atan2_topLeftQuadrantTest(void *args)
 {
     const dd_to_d top_left_cases[] = {
-        { 1.0, -1.0, 3.0 * SDL_PI_D / 4.0 },
-        { SQRT3, -3.0, 5.0 * SDL_PI_D / 6.0 },
-        { SQRT3, -1.0, 2.0 * SDL_PI_D / 3.0 }
+        { 1.0, -1.0, 3.0 * M_PI / 4.0 },
+        { SQRT3, -3.0, 5.0 * M_PI / 6.0 },
+        { SQRT3, -1.0, 2.0 * M_PI / 3.0 }
     };
     return helper_ddtod_inexact("SDL_atan2", SDL_atan2, top_left_cases, SDL_arraysize(top_left_cases));
 }
@@ -2778,9 +2716,9 @@ static int
 atan2_bottomRightQuadrantTest(void *args)
 {
     const dd_to_d bottom_right_cases[] = {
-        { -1.0, 1.0, -SDL_PI_D / 4 },
-        { -SQRT3, 3.0, -SDL_PI_D / 6.0 },
-        { -SQRT3, 1.0, -SDL_PI_D / 3.0 }
+        { -1.0, 1.0, -M_PI / 4 },
+        { -SQRT3, 3.0, -M_PI / 6.0 },
+        { -SQRT3, 1.0, -M_PI / 3.0 }
     };
     return helper_ddtod_inexact("SDL_atan2", SDL_atan2, bottom_right_cases, SDL_arraysize(bottom_right_cases));
 }
@@ -2793,9 +2731,9 @@ static int
 atan2_bottomLeftQuadrantTest(void *args)
 {
     const dd_to_d bottom_left_cases[] = {
-        { -1.0, -1.0, -3.0 * SDL_PI_D / 4.0 },
-        { -SQRT3, -3.0, -5.0 * SDL_PI_D / 6.0 },
-        { -SQRT3, -1.0, -4.0 * SDL_PI_D / 6.0 }
+        { -1.0, -1.0, -3.0 * M_PI / 4.0 },
+        { -SQRT3, -3.0, -5.0 * M_PI / 6.0 },
+        { -SQRT3, -1.0, -4.0 * M_PI / 6.0 }
     };
     return helper_ddtod_inexact("SDL_atan2", SDL_atan2, bottom_left_cases, SDL_arraysize(bottom_left_cases));
 }
@@ -3038,13 +2976,6 @@ static const SDLTest_TestCaseReference log10TestBase = {
 static const SDLTest_TestCaseReference log10TestRegular = {
     (SDLTest_TestCaseFp)log10_regularCases, "log10_regularCases",
     "Checks a set of regular values", TEST_ENABLED
-};
-
-/* SDL_modf test cases */
-
-static const SDLTest_TestCaseReference modfTestBase = {
-    (SDLTest_TestCaseFp)modf_baseCases, "modf_baseCases",
-    "Checks the base cases", TEST_ENABLED
 };
 
 /* SDL_pow test cases */
@@ -3358,8 +3289,6 @@ static const SDLTest_TestCaseReference *mathTests[] = {
     &log10TestLimit, &log10TestNan,
     &log10TestBase, &log10TestRegular,
 
-    &modfTestBase,
-
     &powTestExpInf1, &powTestExpInf2, &powTestExpInf3,
     &powTestBaseInf1, &powTestBaseInf2,
     &powTestNan1, &powTestNan2, &powTestNan3, &powTestNan4,
@@ -3394,9 +3323,4 @@ static const SDLTest_TestCaseReference *mathTests[] = {
     NULL
 };
 
-SDLTest_TestSuiteReference mathTestSuite = {
-    "Math",
-    NULL,
-    mathTests,
-    NULL
-};
+SDLTest_TestSuiteReference mathTestSuite = { "Math", NULL, mathTests, NULL };

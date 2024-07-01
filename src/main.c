@@ -18,7 +18,7 @@ int main(int argc, char **argv)
 	(void)argc;
 	(void)argv;
 	SDL_Thread *event_thread = NULL;
-	SDL_Thread *render_thread = NULL;
+	// SDL_Thread *render_thread = NULL;
 
 	printf("Hello World!\n");
 	/* from libft.a */
@@ -32,7 +32,8 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	window = SDL_CreateWindow("Shooter 01", WINDOW_WIDTH, WINDOW_HEIGHT, 0);
+	window = SDL_CreateWindow("DoomNukem", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
+	// window = SDL_CreateWindow("Shooter 01", WINDOW_WIDTH, WINDOW_HEIGHT, 0);
 	if (!window)
 	{
 		ft_putstr_fd("Failed to create window\n", STDERR_FILENO);
@@ -40,11 +41,11 @@ int main(int argc, char **argv)
 	}
 
 	event_thread = SDL_CreateThread(event_thread_func, "EventThread", NULL);
-	render_thread = SDL_CreateThread(render_thread_func, "RenderThread", NULL);
+	// render_thread = SDL_CreateThread(render_thread_func, "RenderThread", NULL);
 
 	getMap("./asddas/exammplemap.map");
 	SDL_WaitThread(event_thread, NULL);
-	SDL_WaitThread(render_thread, NULL);
+	// SDL_WaitThread(render_thread, NULL);
 
 	// Destroy window
 	SDL_DestroyWindow(window);

@@ -18,7 +18,8 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
+#include "SDL_system.h"
 
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
@@ -30,10 +31,9 @@ extern "C" {
 #include <EGL/eglplatform.h>
 #include <android/native_window_jni.h>
 
-#include "../../audio/SDL_sysaudio.h"
-
-// this appears to be broken right now (on Android, not SDL, I think...?).
-#define ALLOW_MULTIPLE_ANDROID_AUDIO_DEVICES 0
+#include "SDL_audio.h"
+#include "SDL_rect.h"
+#include "SDL_video.h"
 
 /* Interface from the SDL library into the Android Java activity */
 extern void Android_JNI_SetActivityTitle(const char *title);
@@ -48,34 +48,34 @@ extern void Android_JNI_HideScreenKeyboard(void);
 extern SDL_bool Android_JNI_IsScreenKeyboardShown(void);
 extern ANativeWindow *Android_JNI_GetNativeWindow(void);
 
-extern SDL_DisplayOrientation Android_JNI_GetDisplayNaturalOrientation(void);
-extern SDL_DisplayOrientation Android_JNI_GetDisplayCurrentOrientation(void);
+extern SDL_DisplayOrientation Android_JNI_GetDisplayOrientation(void);
+extern int Android_JNI_GetDisplayDPI(float *ddpi, float *xdpi, float *ydpi);
 
 /* Audio support */
-void Android_StartAudioHotplug(SDL_AudioDevice **default_output, SDL_AudioDevice **default_capture);
-void Android_StopAudioHotplug(void);
-extern void Android_AudioThreadInit(SDL_AudioDevice *device);
-extern int Android_JNI_OpenAudioDevice(SDL_AudioDevice *device);
+extern void Android_DetectDevices(void);
+extern int Android_JNI_OpenAudioDevice(int iscapture, int device_id, SDL_AudioSpec *spec);
 extern void *Android_JNI_GetAudioBuffer(void);
 extern void Android_JNI_WriteAudioBuffer(void);
 extern int Android_JNI_CaptureAudioBuffer(void *buffer, int buflen);
 extern void Android_JNI_FlushCapturedAudio(void);
 extern void Android_JNI_CloseAudioDevice(const int iscapture);
+extern void Android_JNI_AudioSetThreadPriority(int iscapture, int device_id);
 
 /* Detecting device type */
 extern SDL_bool Android_IsDeXMode(void);
 extern SDL_bool Android_IsChromebook(void);
 
-int Android_JNI_FileOpen(void **puserdata, const char *fileName, const char *mode);
-Sint64 Android_JNI_FileSize(void *userdata);
-Sint64 Android_JNI_FileSeek(void *userdata, Sint64 offset, int whence);
-size_t Android_JNI_FileRead(void *userdata, void *buffer, size_t size, SDL_IOStatus *status);
-size_t Android_JNI_FileWrite(void *userdata, const void *buffer, size_t size, SDL_IOStatus *status);
-int Android_JNI_FileClose(void *userdata);
+#include "SDL_rwops.h"
+
+int Android_JNI_FileOpen(SDL_RWops* ctx, const char* fileName, const char* mode);
+Sint64 Android_JNI_FileSize(SDL_RWops* ctx);
+Sint64 Android_JNI_FileSeek(SDL_RWops* ctx, Sint64 offset, int whence);
+size_t Android_JNI_FileRead(SDL_RWops* ctx, void* buffer, size_t size, size_t maxnum);
+size_t Android_JNI_FileWrite(SDL_RWops* ctx, const void* buffer, size_t size, size_t num);
+int Android_JNI_FileClose(SDL_RWops* ctx);
 
 /* Environment support */
 void Android_JNI_GetManifestEnvironmentVariables(void);
-int Android_JNI_OpenFileDescriptor(const char *uri, const char *mode);
 
 /* Clipboard support */
 int Android_JNI_SetClipboardText(const char *text);
@@ -94,7 +94,7 @@ void Android_JNI_HapticRun(int device_id, float intensity, int length);
 void Android_JNI_HapticStop(int device_id);
 
 /* Video */
-int Android_JNI_SuspendScreenSaver(SDL_bool suspend);
+void Android_JNI_SuspendScreenSaver(SDL_bool suspend);
 
 /* Touch support */
 void Android_JNI_InitTouch(void);
@@ -114,7 +114,8 @@ int Android_JNI_SendMessage(int command, int param);
 JNIEXPORT void JNICALL SDL_Android_Init(JNIEnv *mEnv, jclass cls);
 
 /* MessageBox */
-int Android_JNI_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID);
+#include "SDL_messagebox.h"
+int Android_JNI_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid);
 
 /* Cursor support */
 int Android_JNI_CreateCustomCursor(SDL_Surface *surface, int hot_x, int hot_y);
@@ -125,6 +126,9 @@ SDL_bool Android_JNI_SetSystemCursor(int cursorID);
 /* Relative mouse support */
 SDL_bool Android_JNI_SupportsRelativeMouse(void);
 SDL_bool Android_JNI_SetRelativeMouseEnabled(SDL_bool enabled);
+
+/* Request permission */
+SDL_bool Android_JNI_RequestPermission(const char *permission);
 
 /* Show toast notification */
 int Android_JNI_ShowToast(const char *message, int duration, int gravity, int xOffset, int yOffset);
@@ -142,13 +146,11 @@ void Android_ActivityMutex_Lock(void);
 void Android_ActivityMutex_Unlock(void);
 void Android_ActivityMutex_Lock_Running(void);
 
-/* File Dialogs */
-SDL_bool Android_JNI_OpenFileDialog(SDL_DialogFileCallback callback, void* userdata,
-    const SDL_DialogFileFilter *filters, SDL_bool forwrite, SDL_bool multiple);
-
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus
 /* *INDENT-OFF* */
 }
 /* *INDENT-ON* */
 #endif
+
+/* vi: set ts=4 sw=4 expandtab: */

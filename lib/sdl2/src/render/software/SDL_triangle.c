@@ -18,18 +18,19 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 #if SDL_VIDEO_RENDER_SW
 
 #include <limits.h>
 
+#include "SDL_surface.h"
 #include "SDL_triangle.h"
 
 #include "../../video/SDL_blit.h"
 
 /* fixed points bits precision
- * Set to 1, so that it can start rendering with middle of a pixel precision.
+ * Set to 1, so that it can start rendering wth middle of a pixel precision.
  * It doesn't need to be increased.
  * But, if increased too much, it overflows (srcx, srcy) coordinates used for filling with texture.
  * (which could be turned to int64).
@@ -186,11 +187,11 @@ static void bounding_rect(const SDL_Point *a, const SDL_Point *b, const SDL_Poin
     int srcy = (int)(((Sint64)w0 * s2s0_y + (Sint64)w1 * s2s1_y + s2_x_area.y) / area);
 
 #define TRIANGLE_GET_MAPPED_COLOR                                                      \
-    Uint8 r = (Uint8)(((Sint64)w0 * c0.r + (Sint64)w1 * c1.r + (Sint64)w2 * c2.r) / area); \
-    Uint8 g = (Uint8)(((Sint64)w0 * c0.g + (Sint64)w1 * c1.g + (Sint64)w2 * c2.g) / area); \
-    Uint8 b = (Uint8)(((Sint64)w0 * c0.b + (Sint64)w1 * c1.b + (Sint64)w2 * c2.b) / area); \
-    Uint8 a = (Uint8)(((Sint64)w0 * c0.a + (Sint64)w1 * c1.a + (Sint64)w2 * c2.a) / area); \
-    Uint32 color = SDL_MapRGBA(format, r, g, b, a);
+    int r = (int)(((Sint64)w0 * c0.r + (Sint64)w1 * c1.r + (Sint64)w2 * c2.r) / area); \
+    int g = (int)(((Sint64)w0 * c0.g + (Sint64)w1 * c1.g + (Sint64)w2 * c2.g) / area); \
+    int b = (int)(((Sint64)w0 * c0.b + (Sint64)w1 * c1.b + (Sint64)w2 * c2.b) / area); \
+    int a = (int)(((Sint64)w0 * c0.a + (Sint64)w1 * c1.a + (Sint64)w2 * c2.a) / area); \
+    int color = SDL_MapRGBA(format, r, g, b, a);
 
 #define TRIANGLE_GET_COLOR                                                             \
     int r = (int)(((Sint64)w0 * c0.r + (Sint64)w1 * c1.r + (Sint64)w2 * c2.r) / area); \
@@ -267,18 +268,18 @@ int SDL_SW_FillTriangle(SDL_Surface *dst, SDL_Point *d0, SDL_Point *d1, SDL_Poin
         rect.y = 0;
         rect.w = dst->w;
         rect.h = dst->h;
-        SDL_GetRectIntersection(&dstrect, &rect, &dstrect);
+        SDL_IntersectRect(&dstrect, &rect, &dstrect);
     }
 
     {
         /* Clip triangle with surface clip rect */
         SDL_Rect rect;
-        SDL_GetSurfaceClipRect(dst, &rect);
-        SDL_GetRectIntersection(&dstrect, &rect, &dstrect);
+        SDL_GetClipRect(dst, &rect);
+        SDL_IntersectRect(&dstrect, &rect, &dstrect);
     }
 
     if (blend != SDL_BLENDMODE_NONE) {
-        SDL_PixelFormatEnum format = dst->format->format;
+        int format = dst->format->format;
 
         /* need an alpha format */
         if (!dst->format->Amask) {
@@ -286,7 +287,7 @@ int SDL_SW_FillTriangle(SDL_Surface *dst, SDL_Point *d0, SDL_Point *d1, SDL_Poin
         }
 
         /* Use an intermediate surface */
-        tmp = SDL_CreateSurface(dstrect.w, dstrect.h, format);
+        tmp = SDL_CreateRGBSurfaceWithFormat(0, dstrect.w, dstrect.h, 0, format);
         if (!tmp) {
             ret = -1;
             goto end;
@@ -294,18 +295,18 @@ int SDL_SW_FillTriangle(SDL_Surface *dst, SDL_Point *d0, SDL_Point *d1, SDL_Poin
 
         if (blend == SDL_BLENDMODE_MOD) {
             Uint32 c = SDL_MapRGBA(tmp->format, 255, 255, 255, 255);
-            SDL_FillSurfaceRect(tmp, NULL, c);
+            SDL_FillRect(tmp, NULL, c);
         }
 
         SDL_SetSurfaceBlendMode(tmp, blend);
 
-        dstbpp = tmp->format->bytes_per_pixel;
-        dst_ptr = (Uint8 *)tmp->pixels;
+        dstbpp = tmp->format->BytesPerPixel;
+        dst_ptr = tmp->pixels;
         dst_pitch = tmp->pitch;
 
     } else {
         /* Write directly to destination surface */
-        dstbpp = dst->format->bytes_per_pixel;
+        dstbpp = dst->format->BytesPerPixel;
         dst_ptr = (Uint8 *)dst->pixels + dstrect.x * dstbpp + dstrect.y * dst->pitch;
         dst_pitch = dst->pitch;
     }
@@ -382,13 +383,13 @@ int SDL_SW_FillTriangle(SDL_Surface *dst, SDL_Point *d0, SDL_Point *d1, SDL_Poin
         } else if (dstbpp == 2) {
             TRIANGLE_BEGIN_LOOP
             {
-                *(Uint16 *)dptr = (Uint16)color;
+                *(Uint16 *)dptr = color;
             }
             TRIANGLE_END_LOOP
         } else if (dstbpp == 1) {
             TRIANGLE_BEGIN_LOOP
             {
-                *dptr = (Uint8)color;
+                *dptr = color;
             }
             TRIANGLE_END_LOOP
         }
@@ -418,14 +419,14 @@ int SDL_SW_FillTriangle(SDL_Surface *dst, SDL_Point *d0, SDL_Point *d1, SDL_Poin
             TRIANGLE_BEGIN_LOOP
             {
                 TRIANGLE_GET_MAPPED_COLOR
-                *(Uint16 *)dptr = (Uint16)color;
+                *(Uint16 *)dptr = color;
             }
             TRIANGLE_END_LOOP
         } else if (dstbpp == 1) {
             TRIANGLE_BEGIN_LOOP
             {
                 TRIANGLE_GET_MAPPED_COLOR
-                *dptr = (Uint8)color;
+                *dptr = color;
             }
             TRIANGLE_END_LOOP
         }
@@ -433,7 +434,7 @@ int SDL_SW_FillTriangle(SDL_Surface *dst, SDL_Point *d0, SDL_Point *d1, SDL_Poin
 
     if (tmp) {
         SDL_BlitSurface(tmp, NULL, dst, &dstrect);
-        SDL_DestroySurface(tmp);
+        SDL_FreeSurface(tmp);
     }
 
 end:
@@ -465,7 +466,7 @@ int SDL_SW_BlitTriangle(
     Uint8 *dst_ptr;
     int dst_pitch;
 
-    const int *src_ptr;
+    int *src_ptr;
     int src_pitch;
 
     Sint64 area, tmp64;
@@ -567,23 +568,23 @@ int SDL_SW_BlitTriangle(
         rect.w = dst->w;
         rect.h = dst->h;
 
-        SDL_GetRectIntersection(&dstrect, &rect, &dstrect);
+        SDL_IntersectRect(&dstrect, &rect, &dstrect);
     }
 
     {
         /* Clip triangle with surface clip rect */
         SDL_Rect rect;
-        SDL_GetSurfaceClipRect(dst, &rect);
-        SDL_GetRectIntersection(&dstrect, &rect, &dstrect);
+        SDL_GetClipRect(dst, &rect);
+        SDL_IntersectRect(&dstrect, &rect, &dstrect);
     }
 
     /* Set destination pointer */
-    dstbpp = dst->format->bytes_per_pixel;
+    dstbpp = dst->format->BytesPerPixel;
     dst_ptr = (Uint8 *)dst->pixels + dstrect.x * dstbpp + dstrect.y * dst->pitch;
     dst_pitch = dst->pitch;
 
     /* Set source pointer */
-    src_ptr = (const int *)src->pixels;
+    src_ptr = src->pixels;
     src_pitch = src->pitch;
 
     is_clockwise = area > 0;
@@ -766,7 +767,7 @@ end:
 #define FORMAT_2101010              1
 #define FORMAT_HAS_ALPHA(format)    format == 0
 #define FORMAT_HAS_NO_ALPHA(format) format < 0
-static int detect_format(SDL_PixelFormat *pf)
+static int SDL_INLINE detect_format(SDL_PixelFormat *pf)
 {
     if (pf->format == SDL_PIXELFORMAT_ARGB2101010) {
         return FORMAT_2101010;
@@ -794,8 +795,8 @@ static void SDL_BlitTriangle_Slow(SDL_BlitInfo *info,
     Uint32 dstR, dstG, dstB, dstA;
     SDL_PixelFormat *src_fmt = info->src_fmt;
     SDL_PixelFormat *dst_fmt = info->dst_fmt;
-    int srcbpp = src_fmt->bytes_per_pixel;
-    int dstbpp = dst_fmt->bytes_per_pixel;
+    int srcbpp = src_fmt->BytesPerPixel;
+    int dstbpp = dst_fmt->BytesPerPixel;
     int srcfmt_val;
     int dstfmt_val;
     Uint32 rgbmask = ~src_fmt->Amask;
@@ -935,3 +936,5 @@ static void SDL_BlitTriangle_Slow(SDL_BlitInfo *info,
 }
 
 #endif /* SDL_VIDEO_RENDER_SW */
+
+/* vi: set ts=4 sw=4 expandtab: */

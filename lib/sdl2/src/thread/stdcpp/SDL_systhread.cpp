@@ -18,11 +18,12 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 /* Thread management routines for SDL */
 
 extern "C" {
+#include "SDL_thread.h"
 #include "../SDL_thread_c.h"
 #include "../SDL_systhread.h"
 }
@@ -31,7 +32,7 @@ extern "C" {
 #include <thread>
 #include <system_error>
 
-#ifdef SDL_PLATFORM_WINRT
+#ifdef __WINRT__
 #include <Windows.h>
 #endif
 
@@ -41,9 +42,7 @@ static void RunThread(void *args)
 }
 
 extern "C" int
-SDL_SYS_CreateThread(SDL_Thread *thread,
-                     SDL_FunctionPointer pfnBeginThread,
-                     SDL_FunctionPointer pfnEndThread)
+SDL_SYS_CreateThread(SDL_Thread *thread)
 {
     try {
         // !!! FIXME: no way to set a thread stack size here.
@@ -61,19 +60,19 @@ extern "C" void
 SDL_SYS_SetupThread(const char *name)
 {
     // Make sure a thread ID gets assigned ASAP, for debugging purposes:
-    SDL_GetCurrentThreadID();
+    SDL_ThreadID();
     return;
 }
 
-extern "C" SDL_ThreadID
-SDL_GetCurrentThreadID(void)
+extern "C" SDL_threadID
+SDL_ThreadID(void)
 {
-#ifdef SDL_PLATFORM_WINRT
+#ifdef __WINRT__
     return GetCurrentThreadId();
 #else
-    // HACK: Mimic a thread ID, if one isn't otherwise available.
-    static thread_local SDL_ThreadID current_thread_id = 0;
-    static SDL_ThreadID next_thread_id = 1;
+    // HACK: Mimick a thread ID, if one isn't otherwise available.
+    static thread_local SDL_threadID current_thread_id = 0;
+    static SDL_threadID next_thread_id = 1;
     static std::mutex next_thread_id_mutex;
 
     if (current_thread_id == 0) {
@@ -89,7 +88,7 @@ SDL_GetCurrentThreadID(void)
 extern "C" int
 SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 {
-#ifdef SDL_PLATFORM_WINRT
+#ifdef __WINRT__
     int value;
 
     if (priority == SDL_THREAD_PRIORITY_LOW) {
@@ -161,3 +160,5 @@ SDL_SYS_SetTLSData(SDL_TLSData *data)
 {
     return SDL_Generic_SetTLSData(data);
 }
+
+/* vi: set ts=4 sw=4 expandtab: */

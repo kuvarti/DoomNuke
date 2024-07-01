@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 #ifdef SDL_VIDEO_DRIVER_EMSCRIPTEN
 
@@ -29,7 +29,6 @@
 #include "SDL_emscriptenmouse.h"
 #include "SDL_emscriptenvideo.h"
 
-#include "../SDL_video_c.h"
 #include "../../events/SDL_mouse_c.h"
 
 /* older Emscriptens don't have this, but we need to for wasm64 compatibility. */
@@ -43,11 +42,14 @@
 
 static SDL_Cursor *Emscripten_CreateCursorFromString(const char *cursor_str, SDL_bool is_custom)
 {
+    SDL_Cursor *cursor;
     Emscripten_CursorData *curdata;
-    SDL_Cursor *cursor = SDL_calloc(1, sizeof(SDL_Cursor));
+
+    cursor = SDL_calloc(1, sizeof(SDL_Cursor));
     if (cursor) {
         curdata = (Emscripten_CursorData *)SDL_calloc(1, sizeof(*curdata));
         if (!curdata) {
+            SDL_OutOfMemory();
             SDL_free(cursor);
             return NULL;
         }
@@ -55,6 +57,8 @@ static SDL_Cursor *Emscripten_CreateCursorFromString(const char *cursor_str, SDL
         curdata->system_cursor = cursor_str;
         curdata->is_custom = is_custom;
         cursor->driverdata = curdata;
+    } else {
+        SDL_OutOfMemory();
     }
 
     return cursor;
@@ -72,7 +76,7 @@ static SDL_Cursor *Emscripten_CreateCursor(SDL_Surface *surface, int hot_x, int 
     const char *cursor_url = NULL;
     SDL_Surface *conv_surf;
 
-    conv_surf = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ABGR8888);
+    conv_surf = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ABGR8888, 0);
 
     if (!conv_surf) {
         return NULL;
@@ -95,9 +99,28 @@ static SDL_Cursor *Emscripten_CreateCursor(SDL_Surface *surface, int hot_x, int 
         var image = ctx.createImageData(w, h);
         var data = image.data;
         var src = pixels >> 2;
-
-        var data32 = new Int32Array(data.buffer);
-        data32.set(HEAP32.subarray(src, src + data32.length));
+        var dst = 0;
+        var num;
+        if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) {
+            // IE10/IE11: ImageData objects are backed by the deprecated CanvasPixelArray,
+            // not UInt8ClampedArray. These don't have buffers, so we need to revert
+            // to copying a byte at a time. We do the undefined check because modern
+            // browsers do not define CanvasPixelArray anymore.
+            num = data.length;
+            while (dst < num) {
+                var val = HEAP32[src]; // This is optimized. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
+                data[dst  ] = val & 0xff;
+                data[dst+1] = (val >> 8) & 0xff;
+                data[dst+2] = (val >> 16) & 0xff;
+                data[dst+3] = (val >> 24) & 0xff;
+                src++;
+                dst += 4;
+            }
+        } else {
+            var data32 = new Int32Array(data.buffer);
+            num = data32.length;
+            data32.set(HEAP32.subarray(src, src + num));
+        }
 
         ctx.putImageData(image, 0, 0);
         var url = hot_x === 0 && hot_y === 0
@@ -111,7 +134,7 @@ static SDL_Cursor *Emscripten_CreateCursor(SDL_Surface *surface, int hot_x, int 
     }, surface->w, surface->h, hot_x, hot_y, conv_surf->pixels);
     /* *INDENT-ON* */ /* clang-format on */
 
-    SDL_DestroySurface(conv_surf);
+    SDL_FreeSurface(conv_surf);
 
     return Emscripten_CreateCursorFromString(cursor_url, SDL_TRUE);
 }
@@ -169,6 +192,11 @@ static int Emscripten_ShowCursor(SDL_Cursor *cursor)
     return 0;
 }
 
+static void Emscripten_WarpMouse(SDL_Window *window, int x, int y)
+{
+    SDL_Unsupported();
+}
+
 static int Emscripten_SetRelativeMouseMode(SDL_bool enabled)
 {
     SDL_Window *window;
@@ -181,7 +209,7 @@ static int Emscripten_SetRelativeMouseMode(SDL_bool enabled)
             return -1;
         }
 
-        window_data = window->driverdata;
+        window_data = (SDL_WindowData *)window->driverdata;
 
         if (emscripten_request_pointerlock(window_data->canvas_id, 1) >= EMSCRIPTEN_RESULT_SUCCESS) {
             return 0;
@@ -201,6 +229,7 @@ void Emscripten_InitMouse()
     mouse->CreateCursor = Emscripten_CreateCursor;
     mouse->ShowCursor = Emscripten_ShowCursor;
     mouse->FreeCursor = Emscripten_FreeCursor;
+    mouse->WarpMouse = Emscripten_WarpMouse;
     mouse->CreateSystemCursor = Emscripten_CreateSystemCursor;
     mouse->SetRelativeMouseMode = Emscripten_SetRelativeMouseMode;
 
@@ -212,3 +241,5 @@ void Emscripten_FiniMouse()
 }
 
 #endif /* SDL_VIDEO_DRIVER_EMSCRIPTEN */
+
+/* vi: set ts=4 sw=4 expandtab: */

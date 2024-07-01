@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 #if SDL_VIDEO_RENDER_SW
 
@@ -31,7 +31,7 @@ static void SDL_DrawLine1(SDL_Surface *dst, int x1, int y1, int x2, int y2, Uint
 {
     if (y1 == y2) {
         int length;
-        int pitch = (dst->pitch / dst->format->bytes_per_pixel);
+        int pitch = (dst->pitch / dst->format->BytesPerPixel);
         Uint8 *pixel;
         if (x1 <= x2) {
             pixel = (Uint8 *)dst->pixels + y1 * pitch + x1;
@@ -98,7 +98,7 @@ static void SDL_DrawLine4(SDL_Surface *dst, int x1, int y1, int x2, int y2, Uint
         if (fmt->Rmask == 0x00FF0000) {
             if (!fmt->Amask) {
                 AALINE(x1, y1, x2, y2,
-                       DRAW_FASTSETPIXELXY4, DRAW_SETPIXELXY_BLEND_XRGB8888,
+                       DRAW_FASTSETPIXELXY4, DRAW_SETPIXELXY_BLEND_RGB888,
                        draw_end);
             } else {
                 AALINE(x1, y1, x2, y2,
@@ -119,9 +119,9 @@ typedef void (*DrawLineFunc)(SDL_Surface *dst,
 
 static DrawLineFunc SDL_CalculateDrawLineFunc(const SDL_PixelFormat *fmt)
 {
-    switch (fmt->bytes_per_pixel) {
+    switch (fmt->BytesPerPixel) {
     case 1:
-        if (fmt->bits_per_pixel < 8) {
+        if (fmt->BitsPerPixel < 8) {
             break;
         }
         return SDL_DrawLine1;
@@ -148,7 +148,7 @@ int SDL_DrawLine(SDL_Surface *dst, int x1, int y1, int x2, int y2, Uint32 color)
 
     /* Perform clipping */
     /* FIXME: We don't actually want to clip, as it may change line slope */
-    if (!SDL_GetRectAndLineIntersection(&dst->clip_rect, &x1, &y1, &x2, &y2)) {
+    if (!SDL_IntersectRectAndLine(&dst->clip_rect, &x1, &y1, &x2, &y2)) {
         return 0;
     }
 
@@ -182,7 +182,7 @@ int SDL_DrawLines(SDL_Surface *dst, const SDL_Point *points, int count,
 
         /* Perform clipping */
         /* FIXME: We don't actually want to clip, as it may change line slope */
-        if (!SDL_GetRectAndLineIntersection(&dst->clip_rect, &x1, &y1, &x2, &y2)) {
+        if (!SDL_IntersectRectAndLine(&dst->clip_rect, &x1, &y1, &x2, &y2)) {
             continue;
         }
 
@@ -198,3 +198,5 @@ int SDL_DrawLines(SDL_Surface *dst, const SDL_Point *points, int count,
 }
 
 #endif /* SDL_VIDEO_RENDER_SW */
+
+/* vi: set ts=4 sw=4 expandtab: */

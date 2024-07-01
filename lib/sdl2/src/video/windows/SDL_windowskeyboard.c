@@ -18,11 +18,12 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
-#if defined(SDL_VIDEO_DRIVER_WINDOWS) && !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
+#if defined(SDL_VIDEO_DRIVER_WINDOWS) && !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
 
 #include "SDL_windowsvideo.h"
+#include "SDL_hints.h"
 
 #include "../../events/SDL_keyboard_c.h"
 #include "../../events/scancodes_windows.h"
@@ -31,10 +32,11 @@
 #include <oleauto.h>
 
 #ifndef SDL_DISABLE_WINDOWS_IME
-static int IME_Init(SDL_VideoData *videodata, HWND hwnd);
+static void IME_Init(SDL_VideoData *videodata, HWND hwnd);
 static void IME_Enable(SDL_VideoData *videodata, HWND hwnd);
 static void IME_Disable(SDL_VideoData *videodata, HWND hwnd);
 static void IME_Quit(SDL_VideoData *videodata);
+static SDL_bool IME_IsTextInputShown(SDL_VideoData *videodata);
 #endif /* !SDL_DISABLE_WINDOWS_IME */
 
 #ifndef MAPVK_VK_TO_VSC
@@ -43,12 +45,15 @@ static void IME_Quit(SDL_VideoData *videodata);
 #ifndef MAPVK_VSC_TO_VK
 #define MAPVK_VSC_TO_VK 1
 #endif
+#ifndef MAPVK_VK_TO_CHAR
+#define MAPVK_VK_TO_CHAR 2
+#endif
 
 /* Alphabetic scancodes for PC keyboards */
-void WIN_InitKeyboard(SDL_VideoDevice *_this)
+void WIN_InitKeyboard(_THIS)
 {
 #ifndef SDL_DISABLE_WINDOWS_IME
-    SDL_VideoData *data = _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *)_this->driverdata;
 
     data->ime_com_initialized = SDL_FALSE;
     data->ime_threadmgr = 0;
@@ -104,9 +109,9 @@ void WIN_InitKeyboard(SDL_VideoDevice *_this)
     SDL_SetScancodeName(SDL_SCANCODE_RGUI, "Right Windows");
 
     /* Are system caps/num/scroll lock active? Set our state to match. */
-    SDL_ToggleModState(SDL_KMOD_CAPS, (GetKeyState(VK_CAPITAL) & 0x0001) ? SDL_TRUE : SDL_FALSE);
-    SDL_ToggleModState(SDL_KMOD_NUM, (GetKeyState(VK_NUMLOCK) & 0x0001) ? SDL_TRUE : SDL_FALSE);
-    SDL_ToggleModState(SDL_KMOD_SCROLL, (GetKeyState(VK_SCROLL) & 0x0001) ? SDL_TRUE : SDL_FALSE);
+    SDL_ToggleModState(KMOD_CAPS, (GetKeyState(VK_CAPITAL) & 0x0001) ? SDL_TRUE : SDL_FALSE);
+    SDL_ToggleModState(KMOD_NUM, (GetKeyState(VK_NUMLOCK) & 0x0001) ? SDL_TRUE : SDL_FALSE);
+    SDL_ToggleModState(KMOD_SCROLL, (GetKeyState(VK_SCROLL) & 0x0001) ? SDL_TRUE : SDL_FALSE);
 }
 
 void WIN_UpdateKeymap(SDL_bool send_event)
@@ -114,16 +119,11 @@ void WIN_UpdateKeymap(SDL_bool send_event)
     int i;
     SDL_Scancode scancode;
     SDL_Keycode keymap[SDL_NUM_SCANCODES];
-    BYTE keyboardState[256] = { 0 };
-    WCHAR buffer[16];
 
     SDL_GetDefaultKeymap(keymap);
-    WIN_ResetDeadKeys();
 
     for (i = 0; i < SDL_arraysize(windows_scancode_table); i++) {
-        int vk, sc, result;
-        Uint32 *ch = 0;
-
+        int vk;
         /* Make sure this scancode is a valid character scancode */
         scancode = windows_scancode_table[i];
         if (scancode == SDL_SCANCODE_UNKNOWN) {
@@ -131,42 +131,30 @@ void WIN_UpdateKeymap(SDL_bool send_event)
         }
 
         /* If this key is one of the non-mappable keys, ignore it */
-        /* Uncomment the third part to re-enable the behavior of not mapping the "`"(grave) key to the users actual keyboard layout */
-        if ((keymap[scancode] & SDLK_SCANCODE_MASK) || scancode == SDL_SCANCODE_DELETE /*|| scancode == SDL_SCANCODE_GRAVE*/) {
+        /* Uncomment the second part re-enable the behavior of not mapping the "`"(grave) key to the users actual keyboard layout */
+        if ((keymap[scancode] & SDLK_SCANCODE_MASK) /*|| scancode == SDL_SCANCODE_GRAVE*/) {
             continue;
         }
 
-        /* Unpack the single byte index to make the scan code. */
-        sc = MAKEWORD(i & 0x7f, (i & 0x80) ? 0xe0 : 0x00);
-        vk = LOBYTE(MapVirtualKey(sc, MAPVK_VSC_TO_VK));
-        if (!vk) {
-            continue;
-        }
-
-        result = ToUnicode(vk, sc, keyboardState, buffer, 16, 0);
-        buffer[SDL_abs(result)] = 0;
-
-        /* Convert UTF-16 to UTF-32 code points */
-        ch = (Uint32 *)SDL_iconv_string("UTF-32LE", "UTF-16LE", (const char *)buffer, (SDL_abs(result) + 1) * sizeof(WCHAR));
-        if (ch) {
-            /* Windows keyboard layouts can emit several UTF-32 code points on a single key press.
-             * Use <U+FFFD REPLACEMENT CHARACTER> since we cannot fit into single SDL_Keycode value in SDL keymap.
-             * See https://kbdlayout.info/features/ligatures for a list of such keys. */
-            keymap[scancode] = ch[1] == 0 ? ch[0] : 0xfffd;
-            SDL_free(ch);
-        }
-
-        if (result < 0) {
-            WIN_ResetDeadKeys();
+        vk = MapVirtualKey(i, MAPVK_VSC_TO_VK);
+        if (vk) {
+            int ch = (MapVirtualKey(vk, MAPVK_VK_TO_CHAR) & 0x7FFF);
+            if (ch) {
+                if (ch >= 'A' && ch <= 'Z') {
+                    keymap[scancode] = SDLK_a + (ch - 'A');
+                } else {
+                    keymap[scancode] = ch;
+                }
+            }
         }
     }
 
     SDL_SetKeymap(0, keymap, SDL_NUM_SCANCODES, send_event);
 }
 
-void WIN_QuitKeyboard(SDL_VideoDevice *_this)
+void WIN_QuitKeyboard(_THIS)
 {
-    SDL_VideoData *data = _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *)_this->driverdata;
 
 #ifndef SDL_DISABLE_WINDOWS_IME
     IME_Quit(data);
@@ -187,21 +175,19 @@ void WIN_ResetDeadKeys()
     */
     BYTE keyboardState[256];
     WCHAR buffer[16];
-    int vk, sc, result, i;
+    int keycode, scancode, result, i;
 
-    if (!GetKeyboardState(keyboardState)) {
-        return;
-    }
+    GetKeyboardState(keyboardState);
 
-    vk = VK_SPACE;
-    sc = MapVirtualKey(vk, MAPVK_VK_TO_VSC);
-    if (sc == 0) {
+    keycode = VK_SPACE;
+    scancode = MapVirtualKey(keycode, MAPVK_VK_TO_VSC);
+    if (scancode == 0) {
         /* the keyboard doesn't have this key */
         return;
     }
 
     for (i = 0; i < 5; i++) {
-        result = ToUnicode(vk, sc, keyboardState, buffer, 16, 0);
+        result = ToUnicode(keycode, scancode, keyboardState, (LPWSTR)buffer, 16, 0);
         if (result > 0) {
             /* success */
             return;
@@ -209,7 +195,7 @@ void WIN_ResetDeadKeys()
     }
 }
 
-void WIN_StartTextInput(SDL_VideoDevice *_this)
+void WIN_StartTextInput(_THIS)
 {
 #ifndef SDL_DISABLE_WINDOWS_IME
     SDL_Window *window;
@@ -220,8 +206,8 @@ void WIN_StartTextInput(SDL_VideoDevice *_this)
 #ifndef SDL_DISABLE_WINDOWS_IME
     window = SDL_GetKeyboardFocus();
     if (window) {
-        HWND hwnd = window->driverdata->hwnd;
-        SDL_VideoData *videodata = _this->driverdata;
+        HWND hwnd = ((SDL_WindowData *)window->driverdata)->hwnd;
+        SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
         SDL_GetWindowSize(window, &videodata->ime_winwidth, &videodata->ime_winheight);
         IME_Init(videodata, hwnd);
         IME_Enable(videodata, hwnd);
@@ -229,7 +215,7 @@ void WIN_StartTextInput(SDL_VideoDevice *_this)
 #endif /* !SDL_DISABLE_WINDOWS_IME */
 }
 
-void WIN_StopTextInput(SDL_VideoDevice *_this)
+void WIN_StopTextInput(_THIS)
 {
 #ifndef SDL_DISABLE_WINDOWS_IME
     SDL_Window *window;
@@ -240,18 +226,23 @@ void WIN_StopTextInput(SDL_VideoDevice *_this)
 #ifndef SDL_DISABLE_WINDOWS_IME
     window = SDL_GetKeyboardFocus();
     if (window) {
-        HWND hwnd = window->driverdata->hwnd;
-        SDL_VideoData *videodata = _this->driverdata;
+        HWND hwnd = ((SDL_WindowData *)window->driverdata)->hwnd;
+        SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
         IME_Init(videodata, hwnd);
         IME_Disable(videodata, hwnd);
     }
 #endif /* !SDL_DISABLE_WINDOWS_IME */
 }
 
-int WIN_SetTextInputRect(SDL_VideoDevice *_this, const SDL_Rect *rect)
+void WIN_SetTextInputRect(_THIS, const SDL_Rect *rect)
 {
-    SDL_VideoData *videodata = _this->driverdata;
+    SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
     HIMC himc = 0;
+
+    if (!rect) {
+        SDL_InvalidParamError("rect");
+        return;
+    }
 
 #ifndef SDL_DISABLE_WINDOWS_IME
     videodata->ime_rect = *rect;
@@ -283,13 +274,17 @@ int WIN_SetTextInputRect(SDL_VideoDevice *_this, const SDL_Rect *rect)
         ImmReleaseContext(videodata->ime_hwnd_current, himc);
     }
 #endif /* !SDL_DISABLE_WINDOWS_IME */
-    return 0;
 }
 
 #ifdef SDL_DISABLE_WINDOWS_IME
 
-void WIN_ClearComposition(SDL_VideoDevice *_this)
+void WIN_ClearComposition(_THIS)
 {
+}
+
+SDL_bool WIN_IsTextInputShown(_THIS)
+{
+    return SDL_FALSE;
 }
 
 SDL_bool IME_HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam, SDL_VideoData *videodata)
@@ -377,12 +372,12 @@ static SDL_bool WIN_ShouldShowNativeUI()
     return SDL_GetHintBoolean(SDL_HINT_IME_SHOW_UI, SDL_FALSE);
 }
 
-static int IME_Init(SDL_VideoData *videodata, HWND hwnd)
+static void IME_Init(SDL_VideoData *videodata, HWND hwnd)
 {
     HRESULT hResult = S_OK;
 
     if (videodata->ime_initialized) {
-        return 0;
+        return;
     }
 
     videodata->ime_hwnd_main = hwnd;
@@ -391,7 +386,8 @@ static int IME_Init(SDL_VideoData *videodata, HWND hwnd)
         hResult = CoCreateInstance(&CLSID_TF_ThreadMgr, NULL, CLSCTX_INPROC_SERVER, &IID_ITfThreadMgr, (LPVOID *)&videodata->ime_threadmgr);
         if (hResult != S_OK) {
             videodata->ime_available = SDL_FALSE;
-            return SDL_SetError("CoCreateInstance() failed, HRESULT is %08X", (unsigned int)hResult);
+            SDL_SetError("CoCreateInstance() failed, HRESULT is %08X", (unsigned int)hResult);
+            return;
         }
     }
     videodata->ime_initialized = SDL_TRUE;
@@ -399,7 +395,7 @@ static int IME_Init(SDL_VideoData *videodata, HWND hwnd)
     if (!videodata->ime_himm32) {
         videodata->ime_available = SDL_FALSE;
         SDL_ClearError();
-        return 0;
+        return;
     }
     /* *INDENT-OFF* */ /* clang-format off */
     videodata->ImmLockIMC = (LPINPUTCONTEXT2 (WINAPI *)(HIMC))SDL_LoadFunction(videodata->ime_himm32, "ImmLockIMC");
@@ -414,7 +410,7 @@ static int IME_Init(SDL_VideoData *videodata, HWND hwnd)
     if (!videodata->ime_himc) {
         videodata->ime_available = SDL_FALSE;
         IME_Disable(videodata, hwnd);
-        return 0;
+        return;
     }
     videodata->ime_available = SDL_TRUE;
     IME_UpdateInputLocale(videodata);
@@ -426,7 +422,6 @@ static int IME_Init(SDL_VideoData *videodata, HWND hwnd)
     }
     IME_UpdateInputLocale(videodata);
     IME_Disable(videodata, hwnd);
-    return 0;
 }
 
 static void IME_Enable(SDL_VideoData *videodata, HWND hwnd)
@@ -745,7 +740,7 @@ static void IME_UpdateInputLocale(SDL_VideoData *videodata)
     }
 
     videodata->ime_hkl = hklnext;
-    videodata->ime_candvertical = (PRIMLANG() != LANG_KOREAN && LANG() != LANG_CHS);
+    videodata->ime_candvertical = (PRIMLANG() == LANG_KOREAN || LANG() == LANG_CHS) ? SDL_FALSE : SDL_TRUE;
 }
 
 static void IME_ClearComposition(SDL_VideoData *videodata)
@@ -768,6 +763,15 @@ static void IME_ClearComposition(SDL_VideoData *videodata)
     ImmNotifyIME(himc, NI_CLOSECANDIDATE, 0, 0);
     ImmReleaseContext(videodata->ime_hwnd_current, himc);
     SDL_SendEditingText("", 0, 0);
+}
+
+static SDL_bool IME_IsTextInputShown(SDL_VideoData *videodata)
+{
+    if (!videodata->ime_initialized || !videodata->ime_available || !videodata->ime_enabled) {
+        return SDL_FALSE;
+    }
+
+    return videodata->ime_uicontext != 0 ? SDL_TRUE : SDL_FALSE;
 }
 
 static void IME_GetCompositionString(SDL_VideoData *videodata, HIMC himc, DWORD string)
@@ -1384,8 +1388,8 @@ static SDL_bool UILess_SetupSinks(SDL_VideoData *videodata)
         return SDL_FALSE;
     }
 
-    videodata->ime_uielemsink = (TSFSink *)SDL_malloc(sizeof(TSFSink));
-    videodata->ime_ippasink = (TSFSink *)SDL_malloc(sizeof(TSFSink));
+    videodata->ime_uielemsink = SDL_malloc(sizeof(TSFSink));
+    videodata->ime_ippasink = SDL_malloc(sizeof(TSFSink));
 
     videodata->ime_uielemsink->lpVtbl = vtUIElementSink;
     videodata->ime_uielemsink->refcount = 1;
@@ -1463,7 +1467,7 @@ static void StopDrawToBitmap(HDC hdc, HBITMAP *hhbm)
 static void DrawRect(HDC hdc, int left, int top, int right, int bottom, int pensize)
 {
     /* The case of no pen (PenSize = 0) is automatically taken care of. */
-    const int penadjust = (int)SDL_floorf(pensize / 2.0f - 0.5f);
+    const int penadjust = (int)SDL_floor(pensize / 2.0f - 0.5f);
     left += pensize / 2;
     top += pensize / 2;
     right -= penadjust;
@@ -1670,7 +1674,7 @@ static void IME_RenderCandidateList(SDL_VideoData *videodata, HDC hdc)
             bottom = size.cy - listborder - listpadding - candmargin;
         }
 
-        if ((DWORD)i == videodata->ime_candsel) {
+        if (i == videodata->ime_candsel) {
             SelectObject(hdc, selpen);
             SelectObject(hdc, selbrush);
             SetTextColor(hdc, seltextcolor);
@@ -1718,12 +1722,20 @@ void IME_Present(SDL_VideoData *videodata)
     /* FIXME: Need to show the IME bitmap */
 }
 
-void WIN_ClearComposition(SDL_VideoDevice *_this)
+SDL_bool WIN_IsTextInputShown(_THIS)
 {
-    SDL_VideoData *videodata = _this->driverdata;
+    SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
+    return IME_IsTextInputShown(videodata);
+}
+
+void WIN_ClearComposition(_THIS)
+{
+    SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
     IME_ClearComposition(videodata);
 }
 
 #endif /* SDL_DISABLE_WINDOWS_IME */
 
 #endif /* SDL_VIDEO_DRIVER_WINDOWS */
+
+/* vi: set ts=4 sw=4 expandtab: */

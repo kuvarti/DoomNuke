@@ -18,19 +18,19 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
+#include "../../SDL_internal.h"
 
 #ifdef HAVE_IBUS_IBUS_H
+#include "SDL.h"
+#include "SDL_hints.h"
+#include "SDL_syswm.h"
 #include "SDL_ibus.h"
 #include "SDL_dbus.h"
-
-#ifdef SDL_USE_LIBDBUS
-
 #include "../../video/SDL_sysvideo.h"
 #include "../../events/SDL_keyboard_c.h"
 
 #ifdef SDL_VIDEO_DRIVER_X11
-#include "../../video/x11/SDL_x11video.h"
+    #include "../../video/x11/SDL_x11video.h"
 #endif
 
 #include <sys/inotify.h>
@@ -63,28 +63,28 @@ static Uint32 IBus_ModState(void)
     SDL_Keymod sdl_mods = SDL_GetModState();
 
     /* Not sure about MOD3, MOD4 and HYPER mappings */
-    if (sdl_mods & SDL_KMOD_LSHIFT) {
+    if (sdl_mods & KMOD_LSHIFT) {
         ibus_mods |= IBUS_SHIFT_MASK;
     }
-    if (sdl_mods & SDL_KMOD_CAPS) {
+    if (sdl_mods & KMOD_CAPS) {
         ibus_mods |= IBUS_LOCK_MASK;
     }
-    if (sdl_mods & SDL_KMOD_LCTRL) {
+    if (sdl_mods & KMOD_LCTRL) {
         ibus_mods |= IBUS_CONTROL_MASK;
     }
-    if (sdl_mods & SDL_KMOD_LALT) {
+    if (sdl_mods & KMOD_LALT) {
         ibus_mods |= IBUS_MOD1_MASK;
     }
-    if (sdl_mods & SDL_KMOD_NUM) {
+    if (sdl_mods & KMOD_NUM) {
         ibus_mods |= IBUS_MOD2_MASK;
     }
-    if (sdl_mods & SDL_KMOD_MODE) {
+    if (sdl_mods & KMOD_MODE) {
         ibus_mods |= IBUS_MOD5_MASK;
     }
-    if (sdl_mods & SDL_KMOD_LGUI) {
+    if (sdl_mods & KMOD_LGUI) {
         ibus_mods |= IBUS_SUPER_MASK;
     }
-    if (sdl_mods & SDL_KMOD_RGUI) {
+    if (sdl_mods & KMOD_RGUI) {
         ibus_mods |= IBUS_META_MASK;
     }
 
@@ -228,7 +228,17 @@ static DBusHandlerResult IBus_MessageHandler(DBusConnection *conn, DBusMessage *
         dbus->message_iter_init(msg, &iter);
         text = IBus_GetVariantText(conn, &iter, dbus);
 
-        SDL_SendKeyboardText(text);
+        if (text && *text) {
+            char buf[SDL_TEXTINPUTEVENT_TEXT_SIZE];
+            size_t text_bytes = SDL_strlen(text), i = 0;
+
+            while (i < text_bytes) {
+                size_t sz = SDL_utf8strlcpy(buf, text + i, sizeof(buf));
+                SDL_SendKeyboardText(buf);
+
+                i += sz;
+            }
+        }
 
         return DBUS_HANDLER_RESULT_HANDLED;
     }
@@ -241,23 +251,38 @@ static DBusHandlerResult IBus_MessageHandler(DBusConnection *conn, DBusMessage *
         text = IBus_GetVariantText(conn, &iter, dbus);
 
         if (text) {
-            Uint32 pos, start_pos, end_pos;
-            SDL_bool has_pos = SDL_FALSE;
-            SDL_bool has_dec_pos = SDL_FALSE;
+            if (SDL_GetHintBoolean(SDL_HINT_IME_SUPPORT_EXTENDED_TEXT, SDL_FALSE)) {
+                Uint32 pos, start_pos, end_pos;
+                SDL_bool has_pos = SDL_FALSE;
+                SDL_bool has_dec_pos = SDL_FALSE;
 
-            dbus->message_iter_init(msg, &iter);
-            has_dec_pos = IBus_GetDecorationPosition(conn, &iter, dbus, &start_pos, &end_pos);
-            if (!has_dec_pos) {
                 dbus->message_iter_init(msg, &iter);
-                has_pos = IBus_GetVariantCursorPos(conn, &iter, dbus, &pos);
-            }
+                has_dec_pos = IBus_GetDecorationPosition(conn, &iter, dbus, &start_pos, &end_pos);
+                if (!has_dec_pos) {
+                    dbus->message_iter_init(msg, &iter);
+                    has_pos = IBus_GetVariantCursorPos(conn, &iter, dbus, &pos);
+                }
 
-            if (has_dec_pos) {
-                SDL_SendEditingText(text, start_pos, end_pos - start_pos);
-            } else if (has_pos) {
-                SDL_SendEditingText(text, pos, -1);
+                if (has_dec_pos) {
+                    SDL_SendEditingText(text, start_pos, end_pos - start_pos);
+                } else if (has_pos) {
+                    SDL_SendEditingText(text, pos, -1);
+                } else {
+                    SDL_SendEditingText(text, -1, -1);
+                }
             } else {
-                SDL_SendEditingText(text, -1, -1);
+                char buf[SDL_TEXTEDITINGEVENT_TEXT_SIZE];
+                size_t text_bytes = SDL_strlen(text), i = 0;
+                size_t cursor = 0;
+
+                do {
+                    const size_t sz = SDL_utf8strlcpy(buf, text + i, sizeof(buf));
+                    const size_t chars = SDL_utf8strlen(buf);
+
+                    SDL_SendEditingText(buf, cursor, chars);
+                    i += sz;
+                    cursor += chars;
+                } while (i < text_bytes);
             }
         }
 
@@ -421,7 +446,7 @@ static void SDLCALL IBus_SetCapabilities(void *data, const char *name, const cha
 
 static SDL_bool IBus_SetupConnection(SDL_DBusContext *dbus, const char *addr)
 {
-    const char *client_name = "SDL3_Application";
+    const char *client_name = "SDL2_Application";
     const char *path = NULL;
     SDL_bool result = SDL_FALSE;
     DBusObjectPathVTable ibus_vtable;
@@ -672,12 +697,13 @@ SDL_bool SDL_IBus_ProcessKeyEvent(Uint32 keysym, Uint32 keycode, Uint8 state)
 
     SDL_IBus_UpdateTextRect(NULL);
 
-    return (result != 0);
+    return result ? SDL_TRUE : SDL_FALSE;
 }
 
 void SDL_IBus_UpdateTextRect(const SDL_Rect *rect)
 {
     SDL_Window *focused_win;
+    SDL_SysWMinfo info;
     int x = 0, y = 0;
     SDL_DBusContext *dbus;
 
@@ -690,19 +716,23 @@ void SDL_IBus_UpdateTextRect(const SDL_Rect *rect)
         return;
     }
 
+    SDL_VERSION(&info.version);
+    if (!SDL_GetWindowWMInfo(focused_win, &info)) {
+        return;
+    }
+
     SDL_GetWindowPosition(focused_win, &x, &y);
 
 #ifdef SDL_VIDEO_DRIVER_X11
-    {
-        SDL_PropertiesID props = SDL_GetWindowProperties(focused_win);
-        Display *x_disp = (Display *)SDL_GetProperty(props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
-        int x_screen = SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_SCREEN_NUMBER, 0);
-        Window x_win = SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
+    if (info.subsystem == SDL_SYSWM_X11) {
+        SDL_DisplayData *displaydata = (SDL_DisplayData *) SDL_GetDisplayForWindow(focused_win)->driverdata;
+
+        Display *x_disp = info.info.x11.display;
+        Window x_win = info.info.x11.window;
+        int x_screen = displaydata->screen;
         Window unused;
 
-        if (x_disp && x_win) {
-            X11_XTranslateCoordinates(x_disp, x_win, RootWindow(x_disp, x_screen), 0, 0, &x, &y, &unused);
-        }
+        X11_XTranslateCoordinates(x_disp, x_win, RootWindow(x_disp, x_screen), 0, 0, &x, &y, &unused);
     }
 #endif
 
@@ -730,6 +760,6 @@ void SDL_IBus_PumpEvents(void)
     }
 }
 
-#endif // SDL_USE_LIBDBUS
-
 #endif
+
+/* vi: set ts=4 sw=4 expandtab: */
