@@ -21,7 +21,7 @@ LIB_DIR = lib
 SRCS := $(shell find $(SRC_DIR) -name '*.c')
 OBJS := $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
-LIB = lib/libft/libft.a -L$(PWD)/lib/sdl2/build -lSDL3
+LIB = lib/libft/libft.a -L$(PWD)/lib/sdl2/build -lSDL2
 
 NAME = doom-nukem
 
