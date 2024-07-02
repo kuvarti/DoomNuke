@@ -1,4 +1,5 @@
 #include "global.h"
+#include "levelEditor.h"
 
 int renderMain() {
 	while (gameEnv->RunningState) {
@@ -9,7 +10,9 @@ int renderMain() {
 			//TODO Raycast;
 		}
 		if (gameEnv->RunningState == 3) {
-			//TODO LevelEditor;
+			initEditor();
+			lvlEditor();
+			freeEditor();
 		}
 	}
 	return 1;

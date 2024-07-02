@@ -1,7 +1,7 @@
 #include "global.h"
 
 int	showMainMenu(){
-	gameEnv->event.mouseButtonHandler = &mainMenu_mouseButtonHandler;
+	mainMenuMouseEventSetter();
 	while (gameEnv->RunningState == 1)
 	{
 		SDL_SetRenderDrawColor(gameEnv->sdl.renderer, 0, 0, 0, 255);

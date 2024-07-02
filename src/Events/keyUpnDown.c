@@ -3,6 +3,13 @@
 
 #define KEY_PRESSED gameEnv->event.keyPressed
 
+void excapeHandler() {
+	if (gameEnv->RunningState != 1)
+		gameEnv->RunningState = 1;
+	else
+		gameEnv->RunningState = 0;
+}
+
 void keyEventKeyUp(SDL_Keycode sym){
 	switch (sym)
 	{
@@ -36,7 +43,7 @@ void keyEventKeyDown(SDL_Keycode sym){
 	switch (sym)
 	{
 	case SDLK_ESCAPE:
-		gameEnv->RunningState = 0;
+		excapeHandler();
 		break;
 	case SDLK_w:
 	case SDLK_UP:
