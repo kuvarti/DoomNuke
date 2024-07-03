@@ -21,7 +21,12 @@ int event_thread_func(void* data) {
 		while (SDL_PollEvent(&event)) {
 			if (event.type == SDL_QUIT) {
 				gameEnv->RunningState = 0;
-			} else if (event.type == SDL_KEYDOWN) {
+				continue;
+			} else if (event.type == SDL_TEXTINPUT) {
+				if (gameEnv->event.textInputHandler)
+					gameEnv->event.textInputHandler(event.text.text);
+			}
+			if (event.type == SDL_KEYDOWN) {
 				if (gameEnv->event.keyDownHandler)
 					gameEnv->event.keyDownHandler(event.key.keysym.sym);
 			} else if (event.type == SDL_KEYUP) {
@@ -45,6 +50,8 @@ int event_thread_func(void* data) {
 		SDL_Delay(10);
 		if (!gameEnv->RunningState){
 			ft_printf("Event thread shutting down\n");
+			if (gameEnv->editor)
+				gameEnv->editor->menu.menuActive = 0; //TODO this is tmp
 			break;
 		}
 	}

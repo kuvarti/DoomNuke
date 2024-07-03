@@ -6,26 +6,58 @@ void	lvlEditorKeyUpHandler(SDL_Keycode sym){
 }
 
 void	lvlEditorKeyDownHandler(SDL_Keycode sym){
-
 }
 
 void	lvlEditorMenuKeyDownHandler(SDL_Keycode sym){
 	switch (sym)
 	{
 	case SDLK_UP:
-		gameEnv->editor->menu.itemIndex -= 1;
-		if (gameEnv->editor->menu.itemIndex < 0)
-			gameEnv->editor->menu.itemIndex = 0;
+		changeActiveItem(-1);
 		break;
 	case SDLK_DOWN:
-		gameEnv->editor->menu.itemIndex += 1;
-		if (gameEnv->editor->menu.itemIndex > MenuItemCount - 1)
-			gameEnv->editor->menu.itemIndex = MenuItemCount - 1;
+		changeActiveItem(1);
+		break;
+	case SDLK_RETURN:
+		selectMenuItem();
 		break;
 	case SDLK_ESCAPE:
-		gameEnv->editor->menu.menuActive = 0;
-		gameEnv->RunningState = 1; //TODO this is temporary
+		lvlEditorEscapeHandler();
+		break;
+	case SDLK_BACKSPACE:
+		lvlEditorMenuTextinputHandler((char *)'\0');
+		break;
 	default:
 		break;
 	}
+}
+
+void	lvlEditorMenuTextinputHandler(char *txt) {
+	char	**fileName = &(gameEnv->editor->menu.newFile);
+	size_t	i, j, nameLen, size;
+	char	*new;
+
+	if (!(*fileName)) {
+		return;
+	}
+	size = ft_strlen(*fileName);
+	if (txt == NULL)
+		size--;
+	else
+		size += ft_strlen(txt);
+	new = malloc(size + 1);
+	nameLen = ft_strlen(*fileName);
+	for (i = 0; i < nameLen - 4; i++)
+		new[i] = (*fileName)[i];
+	if (txt) {
+		for (j = 0; j < ft_strlen(txt); i++, j++)
+			new[i] = txt[j];
+	} else {
+		if (i > 0)
+			i--;
+	}
+	for (j = nameLen - 4; i < size || i < 4; i++, j++) 
+		new[i] = (*fileName)[j];
+	new[i] = '\0';
+	free(*fileName);
+	*fileName = new;
 }

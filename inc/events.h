@@ -15,6 +15,7 @@ typedef struct s_KeyPress
 
 typedef struct s_Events {
 	t_KeyPress  keyPressed;
+	void (* textInputHandler)(char *);
 	void (* keyUpHandler)(SDL_Keycode);
 	void (* keyDownHandler)(SDL_Keycode);
 	void (* lMouseButtonHandler)(t_2dVector);

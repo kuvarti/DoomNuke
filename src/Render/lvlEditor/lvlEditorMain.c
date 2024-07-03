@@ -22,6 +22,8 @@ int lvlEditor() {
 		editorMenuEvents();
 		showMapSelectMenu();
 		editorEvents();
+		if (gameEnv->RunningState != 3)
+			break;
 		// Clear screen
 		SDL_SetRenderDrawColor(gameEnv->sdl.renderer, 0x00, 0x00, 0x00, 0xFF);
 		SDL_RenderClear(gameEnv->sdl.renderer);

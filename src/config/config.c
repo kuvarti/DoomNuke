@@ -15,6 +15,7 @@ void	initGameEnv(void *p) {
 	g->event.MouseMotionHandler = NULL;
 	g->event.keyUpHandler = NULL;
 	g->event.keyDownHandler = NULL;
+	g->event.textInputHandler = NULL;
 	g->RunningState = 0;
 }
 
