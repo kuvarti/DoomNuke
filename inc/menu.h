@@ -29,4 +29,3 @@ void	btn_LevelEditor();
 
 int		showMainMenu();
 void	renderButton(SDL_Renderer *, t_Button, TTF_Font *);
-void	mainMenu_mouseButtonHandler(t_2dVector pos);
