@@ -27,6 +27,5 @@ int		event_thread_func(void *);
 void	keyEventKeyUp(SDL_Keycode);
 void	keyEventKeyDown(SDL_Keycode);
 
-void	mainMenuMouseEventSetter();
-void	lvlEditorMouseEventSetter();
-void	mouseEventNullSetter();
+void	mainMenuEventSetter();
+void	mainMenu_mouseButtonHandler(t_2dVector pos);
