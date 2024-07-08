@@ -12,9 +12,10 @@
 # include "map.h"
 # include "events.h"
 # include "menu.h"
+# include "levelEditor.h"
 
-# define WINDOW_WIDTH 800
-# define WINDOW_HEIGHT 600 
+# define WINDOW_WIDTH 1280
+# define WINDOW_HEIGHT 720 
 
 typedef struct s_SDLs{
 	SDL_Window		*window;
@@ -24,11 +25,12 @@ typedef struct s_SDLs{
 
 //* RunningState: 0 is close, 1 is Main Menu, 2 is raycast, 3 is level editor.
 typedef struct s_gameEnv {
-	t_map		map;
-	t_SDLs		sdl;
-	t_Menu		mainMenu;
-	t_Events	event;
-	int			RunningState;
+	t_map			map;
+	t_SDLs			sdl;
+	t_Menu			mainMenu;
+	t_Events		event;
+	t_levelEditor	*editor;
+	int				RunningState;
 }	t_gameEnv;
 
 extern t_gameEnv	*gameEnv;

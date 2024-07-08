@@ -8,6 +8,7 @@ void	btn_Play() {
 //TODO Start Build Engine
 void	btn_LevelEditor() {
 	ft_printf("btn_LevelEditor \n");
+	gameEnv->RunningState = 3;
 }
 
 //TODO Quit The Game

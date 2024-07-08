@@ -10,7 +10,12 @@ void	initGameEnv(void *p) {
 	g->sdl.window = NULL;
 	g->sdl.window_surface = NULL;
 	g->mainMenu.menuButtons = NULL;
-	g->event.mouseButtonHandler = NULL;
+	g->event.lMouseButtonHandler = NULL;
+	g->event.rMouseButtonHandler = NULL;
+	g->event.MouseMotionHandler = NULL;
+	g->event.keyUpHandler = NULL;
+	g->event.keyDownHandler = NULL;
+	g->event.textInputHandler = NULL;
 	g->RunningState = 0;
 }
 

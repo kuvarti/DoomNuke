@@ -7,7 +7,8 @@ void	*getAndInitStruct(int number, size_t size, void (* initStruct)(void *)){
 
 	ret = malloc(size * (number + 1));
 	while (++i <= number) {
-		initStruct((char *)ret + i * size);
+		if (initStruct)
+			initStruct((char *)ret + i * size);
 	}
 	return ret;
 }

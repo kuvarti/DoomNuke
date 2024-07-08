@@ -15,9 +15,18 @@ typedef struct s_KeyPress
 
 typedef struct s_Events {
 	t_KeyPress  keyPressed;
-	void (* mouseButtonHandler)(t_2dVector);
+	void (* textInputHandler)(char *);
+	void (* keyUpHandler)(SDL_Keycode);
+	void (* keyDownHandler)(SDL_Keycode);
+	void (* lMouseButtonHandler)(t_2dVector);
+	void (* rMouseButtonHandler)(t_2dVector);
+	void (* MouseMotionHandler)(t_2dVector);
 }	t_Events;
 
-int event_thread_func(void *);
-void keyEventKeyUp(SDL_Keycode);
-void keyEventKeyDown(SDL_Keycode);
+int		event_thread_func(void *);
+void	keyEventKeyUp(SDL_Keycode);
+void	keyEventKeyDown(SDL_Keycode);
+
+void	mainMenuMouseEventSetter();
+void	lvlEditorMouseEventSetter();
+void	mouseEventNullSetter();

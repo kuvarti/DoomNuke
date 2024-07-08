@@ -6,7 +6,7 @@
 /*   By: kuvarti <kuvarti@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/12/13 18:29:07 by aeryilma          #+#    #+#             */
-/*   Updated: 2024/06/27 12:33:07 by kuvarti          ###   ########.fr       */
+/*   Updated: 2024/07/03 11:26:39 by kuvarti          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,7 @@ int		ft_isspace(int c);
 int		ft_atoi(const char *nptr);
 int		ft_memcmp(const void *s1, const void *s2, size_t n);
 int		ft_strncmp(const char *s1, const char *s2, size_t n);
+int		ft_strrcmp(char *src, char *dest);
 
 void	ft_bzero(void *s, size_t n);
 void	*ft_memset(void *s, int c, size_t n);

@@ -21,20 +21,37 @@ int event_thread_func(void* data) {
 		while (SDL_PollEvent(&event)) {
 			if (event.type == SDL_QUIT) {
 				gameEnv->RunningState = 0;
-			} else if (event.type == SDL_KEYDOWN) {
-				keyEventKeyDown(event.key.keysym.sym);
+				continue;
+			} else if (event.type == SDL_TEXTINPUT) {
+				if (gameEnv->event.textInputHandler)
+					gameEnv->event.textInputHandler(event.text.text);
+			}
+			if (event.type == SDL_KEYDOWN) {
+				if (gameEnv->event.keyDownHandler)
+					gameEnv->event.keyDownHandler(event.key.keysym.sym);
 			} else if (event.type == SDL_KEYUP) {
-				keyEventKeyUp(event.key.keysym.sym);
+				if (gameEnv->event.keyUpHandler)
+					gameEnv->event.keyUpHandler(event.key.keysym.sym);
 			} else if (event.type == SDL_MOUSEBUTTONDOWN) {
+				SDL_GetMouseState(&mousePos.x, &mousePos.y);
 				if (event.button.button == SDL_BUTTON_LEFT) {
-					SDL_GetMouseState(&mousePos.x, &mousePos.y);
-					gameEnv->event.mouseButtonHandler(mousePos);
+					if (gameEnv->event.lMouseButtonHandler)
+						gameEnv->event.lMouseButtonHandler(mousePos);
 				}
+				if (event.button.button == SDL_BUTTON_RIGHT) {
+					if (gameEnv->event.rMouseButtonHandler)
+						gameEnv->event.rMouseButtonHandler(mousePos);
+				}
+			} else if (event.type == SDL_MOUSEMOTION && gameEnv->event.MouseMotionHandler){
+				SDL_GetMouseState(&mousePos.x, &mousePos.y);
+				gameEnv->event.MouseMotionHandler(mousePos);
 			}
 		}
 		SDL_Delay(10);
 		if (!gameEnv->RunningState){
 			ft_printf("Event thread shutting down\n");
+			if (gameEnv->editor)
+				gameEnv->editor->menu.menuActive = 0; //TODO this is tmp
 			break;
 		}
 	}
