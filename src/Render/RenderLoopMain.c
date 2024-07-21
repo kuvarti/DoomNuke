@@ -3,11 +3,12 @@
 
 int renderMain() {
 	while (gameEnv->RunningState) {
+		printf("RunningState: %d\n", gameEnv->RunningState);
 		if (gameEnv->RunningState == 1) {
 			showMainMenu();
 		}
 		if (gameEnv->RunningState == 2) {
-			//TODO Raycast;
+			render_func();
 		}
 		if (gameEnv->RunningState == 3) {
 			initEditor();

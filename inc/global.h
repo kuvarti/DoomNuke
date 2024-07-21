@@ -9,6 +9,7 @@
 # include "libft.h"
 # include "SDL.h"
 
+# include "render.h"
 # include "map.h"
 # include "events.h"
 # include "menu.h"
