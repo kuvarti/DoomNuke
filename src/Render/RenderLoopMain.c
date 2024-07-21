@@ -8,7 +8,8 @@ int renderMain() {
 			showMainMenu();
 		}
 		if (gameEnv->RunningState == 2) {
-			render_func();
+			initPlayer(10, 10, 0);
+			render_func(player);
 		}
 		if (gameEnv->RunningState == 3) {
 			initEditor();

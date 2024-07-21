@@ -4,15 +4,14 @@
 
 int render_func()
 {
-	SDL_Rect rect = {0, 0, 100, 100};
 	while (gameEnv->RunningState == 2)
 	{
 		gameEventSetter();
 		SDL_SetRenderDrawColor(gameEnv->sdl.renderer, 0, 0, 0, 255);
 		SDL_RenderClear(gameEnv->sdl.renderer);
 		SDL_SetRenderDrawColor(gameEnv->sdl.renderer, 255, 0, 0, 255);
-		// draw a box
-		SDL_RenderFillRect(gameEnv->sdl.renderer, &rect);
+		// draw a line for the player direction
+		SDL_RenderDrawLine(gameEnv->sdl.renderer, player->posX * 10, player->posY * 10, player->posX * 10 + cos(player->dir) * 40, player->posY * 10 + sin(player->dir) * 40);
 
 		SDL_RenderPresent(gameEnv->sdl.renderer);
 		SDL_Delay(300);

@@ -2,8 +2,7 @@
 #include "global.h"
 
 #define KEY_PRESSED gameEnv->event.keyPressed
-
-void excapeHandler() {
+void escapeHandler() {
 	if (gameEnv->RunningState != 1)
 		gameEnv->RunningState = 1;
 	else
@@ -43,7 +42,7 @@ void keyEventKeyDown(SDL_Keycode sym){
 	switch (sym)
 	{
 	case SDLK_ESCAPE:
-		excapeHandler();
+		escapeHandler();
 		break;
 	case SDLK_w:
 	case SDLK_UP:
