@@ -5,7 +5,7 @@
 
 void gameEventSetter();
 void gameKeyEventKeyDown(SDL_Keycode sym);
-void gameMoveEventMotion(SDL_Keycode sym);
+void gameMoveEventMotion(t_2dVector sym);
 
 //TODO: Move this to a separate file
 typedef struct s_weapon {

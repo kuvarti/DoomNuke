@@ -42,7 +42,7 @@ void gameKeyEventKeyDown(SDL_Keycode sym)
 		printf("Player pos: %f, %f rotation: %f\n", player->posX, player->posY, player->dir);
 }
 
-void gameMoveEventMotion(SDL_Keycode sym)
+void gameMoveEventMotion(t_2dVector sym)
 {
 	// TODO WITH mouse motion change player direction
 }
