@@ -66,7 +66,7 @@ $(NAME): $(OBJS)
 
 run: $(NAME)
 	@echo "$(GREEN)Running $(NAME)$(RESET)"
-	@./$(NAME)
+	@./$(NAME) -Wall -Wextra
 
 src: clean all
 

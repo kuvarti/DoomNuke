@@ -21,11 +21,11 @@ void	mainMenuEventSetter() {
 
 void	gameEventSetter(){
 	gameEnv->event.keyUpHandler = &keyEventKeyUp;
-	gameEnv->event.keyDownHandler = &keyEventKeyDown;
+	gameEnv->event.keyDownHandler = &gameKeyEventKeyDown;
 	gameEnv->event.textInputHandler = NULL;
 	gameEnv->event.lMouseButtonHandler = NULL;
 	gameEnv->event.rMouseButtonHandler = NULL;
-	gameEnv->event.MouseMotionHandler = NULL;
+	gameEnv->event.MouseMotionHandler = &gameMoveEventMotion;
 }
 
 void	editorMenuEvents() {

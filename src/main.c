@@ -9,14 +9,13 @@
 
 #include "SDL_thread.h"
 
-t_gameEnv	*gameEnv;
+t_gameEnv *gameEnv;
 
 int main(int argc, char **argv)
 {
 	(void)argc;
 	(void)argv;
 	SDL_Thread *event_thread = NULL;
-	// SDL_Thread *render_thread = NULL;
 
 	InitConfigs();
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -40,10 +39,8 @@ int main(int argc, char **argv)
 
 	gameEnv->RunningState = 1;
 	event_thread = SDL_CreateThread(event_thread_func, "EventThread", NULL);
-	// render_thread = SDL_CreateThread(render_thread_func, "RenderThread", NULL);
 
-	getMap("resources/maps/raycastTest.map");
-	// SDL_WaitThread(render_thread, NULL);
+	// getMap("resources/maps/raycastTest.map"); segfault here!! // TODO FIX
 
 	renderMain();
 	SDL_WaitThread(event_thread, NULL);

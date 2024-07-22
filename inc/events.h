@@ -29,3 +29,4 @@ void	keyEventKeyDown(SDL_Keycode);
 
 void	mainMenuEventSetter();
 void	mainMenu_mouseButtonHandler(t_2dVector pos);
+void	escapeHandler();

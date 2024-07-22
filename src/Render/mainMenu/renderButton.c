@@ -3,6 +3,7 @@
 //TODO Start Gameplay Raycast
 void	btn_Play() {
 	ft_printf("btn_Play \n");
+	gameEnv->RunningState = 2;
 }
 
 //TODO Start Build Engine

@@ -8,11 +8,14 @@
 # include <math.h>
 # include "libft.h"
 # include "SDL.h"
+# include "commonStructures.h"
 
+# include "render.h"
 # include "map.h"
 # include "events.h"
 # include "menu.h"
 # include "levelEditor.h"
+# include "game.h"
 
 # define WINDOW_WIDTH 1280
 # define WINDOW_HEIGHT 720 
