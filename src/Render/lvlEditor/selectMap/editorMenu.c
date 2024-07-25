@@ -1,7 +1,22 @@
 #include "global.h"
 #include "levelEditor.h"
 
-void	lvlEditorEscapeHandler() {
+void	releaseMenuItems() {
+	t_LevelEditorMenuItem	*tmp;
+	tmp = gameEnv->editor->menu.menuItems;
+	while (tmp) {
+		if (tmp->flags & LVLEDITORMENU_IS_EXPANDED) {
+			clearSubItems(tmp);
+		}
+		tmp = tmp->next;
+	}
+	gameEnv->editor->menu.menuActive = 0;
+	if (gameEnv->editor->menu.newFile)
+		free(gameEnv->editor->menu.newFile);
+	gameEnv->editor->menu.newFile = NULL;
+}
+
+void	lvlEditorMenuEscapeHandler() {
 	t_LevelEditorMenuItem	*tmp;
 
 	tmp = gameEnv->editor->menu.menuItems;

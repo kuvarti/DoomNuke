@@ -6,6 +6,14 @@ void	lvlEditorKeyUpHandler(SDL_Keycode sym){
 }
 
 void	lvlEditorKeyDownHandler(SDL_Keycode sym){
+	switch (sym)
+	{
+	case SDLK_ESCAPE:
+		gameEnv->editor->escapeStatus = 1;
+		break;
+	default:
+		break;
+	}
 }
 
 void	lvlEditorMenuKeyDownHandler(SDL_Keycode sym){
@@ -21,7 +29,7 @@ void	lvlEditorMenuKeyDownHandler(SDL_Keycode sym){
 		selectMenuItem();
 		break;
 	case SDLK_ESCAPE:
-		lvlEditorEscapeHandler();
+		lvlEditorMenuEscapeHandler();
 		break;
 	case SDLK_BACKSPACE:
 		lvlEditorMenuTextinputHandler((char *)'\0');

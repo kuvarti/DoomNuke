@@ -2,8 +2,16 @@
 #include <dirent.h>
 
 void	mapSelectionBtn() {
-	ft_printf("Map selected as : *%s\n", gameEnv->editor->menu.newFile);
-	//TODO OPEN sdfiklhjubvioudksyb
+	char	*fileN;
+	fileN = ft_strjoin("resources/maps/", gameEnv->editor->menu.newFile);
+	int fd = open(fileN, O_RDWR | O_CREAT, 0644);
+	ft_printf("Map selected as : *%s (%d)\n", fileN, fd);
+	if (fd <= 0) {
+		ft_printf("Some error occured while opening file %d\n", fileN);
+		return ;
+	}
+	gameEnv->editor->openedFile = fd;
+	gameEnv->editor->menu.menuActive = 0;
 }
 
 void	selectExistingMap() {
@@ -50,4 +58,12 @@ void	createNewMap() {
 void	returnMainMenu() {
 	gameEnv->editor->menu.menuActive = 0;
 	gameEnv->RunningState = 1;
+	if (gameEnv->editor->openedFile)
+		close(gameEnv->editor->openedFile);
+	gameEnv->editor->openedFile = 0;
+}
+
+void	escapeMenuNoButton() {
+	gameEnv->editor->menu.menuActive = 0;
+	gameEnv->editor->escapeStatus = 0;
 }

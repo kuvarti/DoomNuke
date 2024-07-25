@@ -7,10 +7,15 @@
 #define LVLEDITORMENU2 "Create New Map"
 #define LVLEDITORMENU3 "Return Main Menu"
 
+#define LVLEDITORESCAPEMENU "Returning main menu without saving are you sure?"
+#define LVLEDITORESCAPEMENU1 "Yes"
+#define LVLEDITORESCAPEMENU2 "No"
+
 #define LVLEDITORMENU_IS_SUB 1
 #define LVLEDITORMENU_IS_EXPANDED 2
 #define LVLEDITORMENU_IS_ACTIVE 4
 #define LVLEDITORMENU_IS_INPUT 8
+
 typedef struct s_LevelEditorMenuItem {
 	char							*title;
 	int								flags;
@@ -25,6 +30,8 @@ typedef struct s_LevelEditorMenu {
 }	t_LevelEditorMenu;
 
 typedef struct s_levelEditor{
+	int					openedFile;
+	int					escapeStatus;
 	t_LevelEditorMenu	menu;
 }	t_levelEditor;
 
@@ -36,7 +43,8 @@ void	editorMenuEvents();
 void	editorEvents();
 
 void	selectMenuItem();
-void	lvlEditorEscapeHandler();
+void	releaseMenuItems();
+void	lvlEditorMenuEscapeHandler();
 void	changeActiveItem(int new);
 void	lvlEditorKeyUpHandler(SDL_Keycode);
 void	lvlEditorKeyDownHandler(SDL_Keycode);
@@ -47,13 +55,16 @@ void	drawMenuItem(char *, int, SDL_Rect *);
 
 //* Menu Specific
 t_LevelEditorMenuItem	*setMenuItems();
+t_LevelEditorMenuItem	*setEscapeMenuItems();
 t_LevelEditorMenuItem	*createNewSub(char *, t_LevelEditorMenuItem *);
 void					mapSelectionBtn();
 void					showMapSelectMenu();
+void					showEditorEscapeSelectMenu();
 void					clearSubItems(t_LevelEditorMenuItem *);
 
 void	selectExistingMap();
 void	createNewMap();
 void	returnMainMenu();
+void	escapeMenuNoButton();
 
 int lvlEditor();
