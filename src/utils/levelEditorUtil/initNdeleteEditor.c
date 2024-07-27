@@ -7,6 +7,12 @@ void	initEditor() {
 	gameEnv->editor->menu.menuItems = NULL;
 	gameEnv->editor->openedFile = -1;
 	gameEnv->editor->escapeStatus = 0;
+	gameEnv->editor->editor.gridSize = 25;
+	gameEnv->editor->editor.offset.x = 0;
+	gameEnv->editor->editor.offset.y = 0;
+	gameEnv->editor->editor.anchor.x = ((WINDOW_WIDTH / 2) / gameEnv->editor->editor.gridSize) * gameEnv->editor->editor.gridSize;
+	gameEnv->editor->editor.anchor.y = ((WINDOW_HEIGHT / 2) / gameEnv->editor->editor.gridSize) * gameEnv->editor->editor.gridSize;
+	gameEnv->editor->editor.activeSector = NULL;
 }
 
 void	freeEditorMenuItems() {

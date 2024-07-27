@@ -12,6 +12,7 @@ void	mapSelectionBtn() {
 	}
 	gameEnv->editor->openedFile = fd;
 	gameEnv->editor->menu.menuActive = 0;
+	gameEnv->editor->escapeStatus = 0;
 }
 
 void	selectExistingMap() {

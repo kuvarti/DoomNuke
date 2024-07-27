@@ -2,6 +2,7 @@
 
 #include "SDL_rect.h"
 #include "SDL_keycode.h"
+#include "commonStructures.h"
 
 #define LVLEDITORMENU1 "Select An Existing Map"
 #define LVLEDITORMENU2 "Create New Map"
@@ -29,11 +30,27 @@ typedef struct s_LevelEditorMenu {
 	t_LevelEditorMenuItem	*menuItems;
 }	t_LevelEditorMenu;
 
+typedef struct s_Editor {
+	t_2dVector			offset;
+	t_2dVector			anchor;
+	int					gridSize;
+	struct s_WallVertex	*activeSector;
+}	t_Editor;
+
 typedef struct s_levelEditor{
 	int					openedFile;
 	int					escapeStatus;
+	t_Editor			editor;
 	t_LevelEditorMenu	menu;
 }	t_levelEditor;
+
+//* Editor Structures
+typedef struct s_WallVertex {
+	t_2dVector			position;
+	t_2dVector			coordinate;
+	struct s_WallVertex	*next;
+	struct s_WallVertex	*prev;
+}	t_WallVertex;
 
 //* Init & Config
 void	initEditor();
@@ -45,9 +62,11 @@ void	editorEvents();
 void	selectMenuItem();
 void	releaseMenuItems();
 void	lvlEditorMenuEscapeHandler();
-void	changeActiveItem(int new);
+void	changeActiveItem(int);
+void	lvlEditorlMouseHandler(t_2dVector);
 void	lvlEditorKeyUpHandler(SDL_Keycode);
 void	lvlEditorKeyDownHandler(SDL_Keycode);
+void	lvlEditorMouseMotionHandler(t_2dVector);
 void	lvlEditorMenuKeyDownHandler(SDL_Keycode);
 void	lvlEditorMenuTextinputHandler(char *txt);
 
@@ -66,5 +85,14 @@ void	selectExistingMap();
 void	createNewMap();
 void	returnMainMenu();
 void	escapeMenuNoButton();
+
+//* Editor
+void	showEditor();
+
+//* Editor Utils
+void		initWallVertex(void *);
+t_2dVector	calcGridIntersection(t_2dVector);
+t_2dVector	calcCoordinate(t_2dVector);
+t_2dVector	reCalsPosition(t_2dVector);
 
 int lvlEditor();
