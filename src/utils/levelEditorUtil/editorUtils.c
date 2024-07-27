@@ -9,3 +9,9 @@ void	initWallVertex(void *p) {
 	w->position.x = 0;
 	w->position.y = 0;
 }
+void	initEditorSector(void *p) {
+	t_EditorSectors *e = (t_EditorSectors *)p;
+	e->next = NULL;
+	e->prev = NULL;
+	e->walls = NULL;
+}

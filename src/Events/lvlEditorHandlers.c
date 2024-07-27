@@ -2,7 +2,6 @@
 #include "events.h"
 #include "levelEditor.h"
 
-//TODO remove this logic
 void	lvlEditorlMouseHandler(t_2dVector pos){
 	t_WallVertex *tmp, *active;
 
@@ -23,22 +22,27 @@ void	lvlEditorlMouseHandler(t_2dVector pos){
 		active->prev = tmp;
 		gameEnv->editor->editor.activeSector = tmp;
 	}
+	if (tmp->next && tmp->next->next)
+		checkVertexesHasValidShape();
+}
 
-	if (tmp->next && tmp->next->next) {
-		t_WallVertex *first = tmp;
+void	lvlEditorrMouseHandler(t_2dVector pos){
+	t_WallVertex *tmp, *active;
 
-		while (1) {
-			if (first->next) {
-				first = first->next;
-			} else
-				break;
+	active = gameEnv->editor->editor.activeSector;
+	if (active) {
+		tmp = active->next;
+		tmp->prev = NULL;
+		free(active);
+		gameEnv->editor->editor.activeSector = tmp;
+		lvlEditorMouseMotionHandler(pos);
+		if (!tmp->next) {
+			free(tmp);
+			gameEnv->editor->editor.activeSector = NULL;
 		}
-
-		if (tmp->next->coordinate.x == first->coordinate.x &&
-				tmp->next->coordinate.y == first->coordinate.y)
-			ft_printf("New Sector Accuired\n");
+	} else {
+		checkPosIsValidSectorWall(calcGridIntersection(pos));
 	}
-	ft_printf("New Vertex at: %d, %d Coordinate: %d, %d\n", tmp->position.x, tmp->position.y, tmp->coordinate.x, tmp->coordinate.y);
 }
 
 void	lvlEditorMouseMotionHandler(t_2dVector pos){
@@ -48,6 +52,8 @@ void	lvlEditorMouseMotionHandler(t_2dVector pos){
 	if (tmp) {
 		tmp->position = calcGridIntersection(pos);
 		tmp->coordinate = calcCoordinate(tmp->position);
+	} else {
+		gameEnv->editor->editor.mousePos = calcGridIntersection(pos);
 	}
 }
 
