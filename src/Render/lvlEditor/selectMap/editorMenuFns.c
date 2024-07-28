@@ -11,6 +11,7 @@ void	mapSelectionBtn() {
 		return ;
 	}
 	gameEnv->editor->openedFile = fd;
+	readAndInitFile();
 	gameEnv->editor->menu.menuActive = 0;
 	gameEnv->editor->escapeStatus = 0;
 }

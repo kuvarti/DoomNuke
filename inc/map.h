@@ -37,10 +37,13 @@ typedef	struct s_sector {
 }	t_sector;
 
 typedef struct s_map{
+	int			sectorCount;
 	t_sector	*sector;
 }	t_map;
 
 int		getMap(char *file);
+int		getMapFd(int fd);
+void	freeMap();
 void	init2dVector(void *p);
 void	initSurface(void *p);
 void	initSector(void *p);

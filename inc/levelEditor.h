@@ -48,6 +48,7 @@ typedef struct s_levelEditor{
 
 //* Editor Structures
 typedef struct s_EditorSectors{
+	int						sectorNo;
 	struct s_WallVertex		*walls;
 	struct s_EditorSectors	*next;
 	struct s_EditorSectors	*prev;
@@ -66,6 +67,7 @@ void	freeEditor();
 void	freeEditorMenuItems();
 void	freeWallVertexes(t_WallVertex *);
 void	editorMenuEvents();
+void	readAndInitFile();
 void	editorEvents();
 
 void	selectMenuItem();

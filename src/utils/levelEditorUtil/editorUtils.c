@@ -14,4 +14,5 @@ void	initEditorSector(void *p) {
 	e->next = NULL;
 	e->prev = NULL;
 	e->walls = NULL;
+	e->sectorNo = 0;
 }

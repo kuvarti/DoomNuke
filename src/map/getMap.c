@@ -69,6 +69,7 @@ int	parseSector(char **mapLines) {
 	if (!gameEnv->map.sector) {
 		return (!ft_printf("Some errors occurred while initializing Sectors."));
 	}
+	gameEnv->map.sectorCount = i - tmp;
 	while (1) {
 		line = ft_split(mapLines[tmp++], ' ');
 		wallCount = ft_atoi(line[2]);
@@ -92,7 +93,17 @@ int	parseSector(char **mapLines) {
 	return 1;
 }
 
-int   getMap(char *file)
+void	freeMap() {
+	int		iter = 0;
+
+	while (gameEnv->map.sector[iter].sectorNo) {
+		free(gameEnv->map.sector[iter].walls);
+		iter++;
+	}
+	free(gameEnv->map.sector);
+}
+
+int	getMap(char *file)
 {
 	char	*fileText, **lines;
 	int fd = open(file, O_RDONLY);
@@ -111,4 +122,18 @@ int   getMap(char *file)
 		return (!ft_printf("Map is not properly parsed."));
 	ft_freesplit(lines);
 	return 1;
+}
+
+int	getMapFd(int fd) {
+	char	*fileText, **lines;
+
+	fileText = getFullText(fd);
+	lines = ft_split(fileText, '\n');
+	free(fileText);
+	if (!lines) {
+		return (!ft_printf("Some errors occurred during reading file."));
+	}
+	if (!parseSector(lines))
+		return (!ft_printf("Map is not properly parsed."));
+	ft_freesplit(lines);
 }

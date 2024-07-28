@@ -35,6 +35,7 @@ void	freeEditor() {
 		free(gameEnv->editor->menu.newFile);
 	if (gameEnv->editor->openedFile != -1) 
 		free(gameEnv->editor);
+	freeMap();
 	gameEnv->editor = NULL;
 }
 
