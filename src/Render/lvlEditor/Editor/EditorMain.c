@@ -57,6 +57,6 @@ void	showEditor() {
 			drawMousePoint(gameEnv->editor->editor.mousePos);
 
 		SDL_RenderPresent(gameEnv->sdl.renderer);
-		SDL_Delay(100);
+		SDL_Delay(10);
 	}
 }

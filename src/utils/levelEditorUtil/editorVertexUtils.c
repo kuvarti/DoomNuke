@@ -19,27 +19,20 @@ void	newSector() {
 void	removeSector(t_EditorSectors *tmp) {
 	t_Editor *editor = &gameEnv->editor->editor;
 
-	// ft_printf("next: %p\nprev: %p\n\n", tmp->next, tmp->prev);
 	if (tmp->prev)
 		tmp->prev->next = tmp->next;
+	else if (tmp->next) //* !tmp->prev
+		tmp->next->prev = NULL;
 	if (tmp->next)
 		tmp->next->prev = tmp->prev;
-	if (editor->sectors == tmp && !editor->sectors->next)
-		gameEnv->editor->editor.sectors = NULL;
-
+	else if (tmp->prev) //* !tmp->next
+		tmp->prev->next = NULL;
+	if(editor->sectors == tmp)
+		gameEnv->editor->editor.sectors = tmp->next;
 	freeWallVertexes(tmp->walls);
+	tmp->walls = NULL;
 	free(tmp);
-	//! TODO segfault
-
-// 	t_EditorSectors *new = gameEnv->editor->editor.sectors;
-// 	while (new) {
-// 		write(1, "a", 1);
-// 		printf("New Sector %p\nnext: %p\nprev:%p\n----------\n", new, new->next, new->prev);
-// 		write(1, "b", 1);
-// 		new = new->next;
-// 	}
-// 	ft_printf("\n\n");
-// }
+}
 
 void	checkVertexesHasValidShape() {
 	t_WallVertex *tmp, *first;
