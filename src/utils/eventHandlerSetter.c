@@ -41,7 +41,7 @@ void	editorEvents() {
 	gameEnv->event.keyUpHandler = &lvlEditorKeyUpHandler;
 	gameEnv->event.keyDownHandler = &lvlEditorKeyDownHandler;
 	gameEnv->event.textInputHandler = NULL;
-	gameEnv->event.lMouseButtonHandler = NULL;
-	gameEnv->event.rMouseButtonHandler = NULL;
-	gameEnv->event.MouseMotionHandler = NULL;
+	gameEnv->event.lMouseButtonHandler = &lvlEditorlMouseHandler;
+	gameEnv->event.rMouseButtonHandler = &lvlEditorrMouseHandler;
+	gameEnv->event.MouseMotionHandler = &lvlEditorMouseMotionHandler;
 }

@@ -50,8 +50,10 @@ int event_thread_func(void* data) {
 		SDL_Delay(10);
 		if (!gameEnv->RunningState){
 			ft_printf("Event thread shutting down\n");
-			if (gameEnv->editor)
-				gameEnv->editor->menu.menuActive = 0; //TODO this is tmp
+			if (gameEnv->editor) { //TODO this is tmp
+				gameEnv->editor->escapeStatus = 1;
+				gameEnv->editor->menu.menuActive = 0;
+			}
 			break;
 		}
 	}

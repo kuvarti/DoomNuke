@@ -2,10 +2,85 @@
 #include "events.h"
 #include "levelEditor.h"
 
+void	lvlEditorlMouseHandler(t_2dVector pos){
+	t_WallVertex *tmp, *active;
+
+	tmp = (t_WallVertex *)getAndInitStruct(1, sizeof(t_WallVertex), &initWallVertex);
+	tmp->position = calcGridIntersection(pos);
+	tmp->coordinate = calcCoordinate(tmp->position);
+
+	active = gameEnv->editor->editor.activeSector;
+	if (!active) {
+		active = (t_WallVertex *)getAndInitStruct(1, sizeof(t_WallVertex), &initWallVertex);
+		active->next = tmp;
+		active->position = tmp->position;
+		active->coordinate = tmp->coordinate;
+		tmp->prev = active;
+		gameEnv->editor->editor.activeSector = active;
+	} else {
+		tmp->next = active;
+		active->prev = tmp;
+		gameEnv->editor->editor.activeSector = tmp;
+	}
+	if (tmp->next && tmp->next->next)
+		checkVertexesHasValidShape();
+}
+
+void	lvlEditorrMouseHandler(t_2dVector pos){
+	t_WallVertex *tmp, *active;
+
+	active = gameEnv->editor->editor.activeSector;
+	if (active) {
+		tmp = active->next;
+		tmp->prev = NULL;
+		free(active);
+		gameEnv->editor->editor.activeSector = tmp;
+		lvlEditorMouseMotionHandler(pos);
+		if (!tmp->next) {
+			free(tmp);
+			gameEnv->editor->editor.activeSector = NULL;
+		}
+	} else {
+		checkPosIsValidSectorWall(calcGridIntersection(pos));
+	}
+}
+
+void	lvlEditorMouseMotionHandler(t_2dVector pos){
+	t_WallVertex *tmp;
+	
+	tmp = gameEnv->editor->editor.activeSector;
+	if (tmp) {
+		tmp->position = calcGridIntersection(pos);
+		tmp->coordinate = calcCoordinate(tmp->position);
+	} else {
+		gameEnv->editor->editor.mousePos = calcGridIntersection(pos);
+	}
+}
+
 void	lvlEditorKeyUpHandler(SDL_Keycode sym){
 }
 
 void	lvlEditorKeyDownHandler(SDL_Keycode sym){
+	switch (sym)
+	{
+	case SDLK_ESCAPE:
+		gameEnv->editor->escapeStatus = 1;
+		break;
+	case SDLK_UP:
+		gameEnv->editor->editor.offset.y -= gameEnv->editor->editor.gridSize;
+		break;
+	case SDLK_DOWN:
+		gameEnv->editor->editor.offset.y += gameEnv->editor->editor.gridSize;
+		break;
+	case SDLK_RIGHT:
+		gameEnv->editor->editor.offset.x += gameEnv->editor->editor.gridSize;
+		break;
+	case SDLK_LEFT:
+		gameEnv->editor->editor.offset.x -= gameEnv->editor->editor.gridSize;
+		break;
+	default:
+		break;
+	}
 }
 
 void	lvlEditorMenuKeyDownHandler(SDL_Keycode sym){
@@ -21,7 +96,7 @@ void	lvlEditorMenuKeyDownHandler(SDL_Keycode sym){
 		selectMenuItem();
 		break;
 	case SDLK_ESCAPE:
-		lvlEditorEscapeHandler();
+		lvlEditorMenuEscapeHandler();
 		break;
 	case SDLK_BACKSPACE:
 		lvlEditorMenuTextinputHandler((char *)'\0');

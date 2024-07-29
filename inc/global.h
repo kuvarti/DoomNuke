@@ -18,7 +18,8 @@
 # include "game.h"
 
 # define WINDOW_WIDTH 1280
-# define WINDOW_HEIGHT 720 
+# define WINDOW_HEIGHT 720
+# define SDL_DELAY 50
 
 typedef struct s_SDLs{
 	SDL_Window		*window;

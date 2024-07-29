@@ -40,7 +40,7 @@ int main(int argc, char **argv)
 	gameEnv->RunningState = 1;
 	event_thread = SDL_CreateThread(event_thread_func, "EventThread", NULL);
 
-	// getMap("resources/maps/raycastTest.map"); segfault here!! // TODO FIX
+	getMap("resources/maps/raycastTest.map");// segfault here!! // TODO FIX
 
 	renderMain();
 	SDL_WaitThread(event_thread, NULL);
