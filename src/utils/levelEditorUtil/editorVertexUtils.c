@@ -50,7 +50,7 @@ void	checkVertexesHasValidShape() {
 		newSector();
 }
 
-int	checkPosIsValidSectorWall(t_2dVector pos) {
+int	checkPosIsValidSectorVertex(t_2dVector pos) {
 	t_EditorSectors	*tmp;
 	t_WallVertex	*wtmp;
 
@@ -68,4 +68,34 @@ int	checkPosIsValidSectorWall(t_2dVector pos) {
 		tmp = tmp->next;
 	}
 	return 0;
+}
+
+int isPointInPolygon(t_2dVector point, t_WallVertex *polygon) {
+	int intersections = 0;
+	t_WallVertex *current = polygon;
+
+	while (current && current->next) {
+		t_2dVector p1 = current->position;
+		t_2dVector p2 = current->next->position;
+		if (((p1.y > point.y) != (p2.y > point.y)) &&
+			(point.x < (p2.x - p1.x) * (point.y - p1.y) / (p2.y - p1.y) + p1.x)) {
+			intersections++;
+		}
+		current = current->next;
+	}
+	return (intersections % 2) != 0;
+}
+
+int checkPosIsValidSector(t_2dVector pos) {
+	int	res = 0;
+	t_EditorSectors *currentSector = gameEnv->editor->editor.sectors;
+
+	while (currentSector) {
+		if (isPointInPolygon(pos, currentSector->walls)) {
+			res = 1;
+			printf("Mouse is inside sector %d\n", currentSector->sectorNo);
+		}
+		currentSector = currentSector->next;
+	}
+	return res;
 }

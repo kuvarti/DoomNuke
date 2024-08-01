@@ -41,7 +41,7 @@ void	lvlEditorrMouseHandler(t_2dVector pos){
 			gameEnv->editor->editor.activeSector = NULL;
 		}
 	} else {
-		checkPosIsValidSectorWall(calcGridIntersection(pos));
+		checkPosIsValidSector((pos));
 	}
 }
 

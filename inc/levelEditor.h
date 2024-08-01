@@ -110,6 +110,7 @@ t_2dVector	calcGridIntersection(t_2dVector);
 t_2dVector	calcCoordinate(t_2dVector);
 t_2dVector	reCalsPosition(t_2dVector);
 void		checkVertexesHasValidShape();
-int			checkPosIsValidSectorWall(t_2dVector);
+int			checkPosIsValidSectorVertex(t_2dVector);
+int			checkPosIsValidSector(t_2dVector);
 
 int lvlEditor();
