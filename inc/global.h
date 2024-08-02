@@ -10,6 +10,7 @@
 # include "SDL.h"
 # include "commonStructures.h"
 
+# include "fonts.h"
 # include "render.h"
 # include "map.h"
 # include "events.h"
@@ -31,6 +32,7 @@ typedef struct s_SDLs{
 typedef struct s_gameEnv {
 	t_map			map;
 	t_SDLs			sdl;
+	t_Font			*fonts;
 	t_Menu			mainMenu;
 	t_Events		event;
 	t_levelEditor	*editor;

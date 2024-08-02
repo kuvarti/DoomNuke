@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SDL.h"
-#include "SDL_ttf.h"
+#include "fonts.h"
 
 #define BUTTON_WIDTH 200
 #define BUTTON_HEIGHT 50
@@ -13,14 +13,8 @@ typedef struct s_Button {
 	void (*onClick)();
 }	t_Button;
 
-typedef struct s_Font {
-	TTF_Font	*font;
-	int			size;
-}	t_Font;
-
 typedef struct s_Menu {
 	t_Button	*menuButtons;
-	t_Font		font;
 }	t_Menu;
 
 void	btn_Play();

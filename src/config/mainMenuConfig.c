@@ -36,14 +36,3 @@ void	initMainMenuButtons() {
 	};
 	MainMenuButton[2].onClick = &btn_Quit;
 }
-
-void	initMainMenufont() {
-	if (TTF_Init() == -1) {
-		ft_printf("TTF_Init err: %s\n", TTF_GetError());
-	}
-	gameEnv->mainMenu.font.size = 30;
-	gameEnv->mainMenu.font.font = TTF_OpenFont("resources/ttf/arial.ttf", gameEnv->mainMenu.font.size);
-	if (!gameEnv->mainMenu.font.font) {
-		ft_printf("Failed to load font! TTF_Error: %s\n", TTF_GetError());
-	}
-}

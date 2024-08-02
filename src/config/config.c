@@ -21,11 +21,11 @@ void	initGameEnv(void *p) {
 
 void	initMainMenu() {
 	initMainMenuButtons();
-	initMainMenufont();
 } 
 
 int InitConfigs() {
 	gameEnv = (t_gameEnv *)getAndInitStruct(1, sizeof(t_gameEnv), &initGameEnv);
 	initMainMenu();
+	initFonts();
 	return 1;
 }

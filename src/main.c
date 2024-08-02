@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 	renderMain();
 	SDL_WaitThread(event_thread, NULL);
 
-	TTF_CloseFont(gameEnv->mainMenu.font.font);
+	closeFonts();
 	SDL_DestroyRenderer(gameEnv->sdl.renderer);
 	SDL_DestroyWindow(gameEnv->sdl.window);
 	gameEnv->sdl.window = NULL;

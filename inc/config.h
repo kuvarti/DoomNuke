@@ -4,6 +4,5 @@
 int		InitConfigs();
 
 void	initMainMenuButtons();
-void	initMainMenufont();
 
 #endif

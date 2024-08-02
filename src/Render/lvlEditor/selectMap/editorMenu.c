@@ -60,7 +60,7 @@ void	drawMenuItem(char *txt, int isActive, SDL_Rect *msgR){
 		color = (SDL_Color){255, 255, 255, 255};
 		bgColor = (SDL_Color){0, 0, 0, 255};
 	}
-	SDL_Surface *surface = TTF_RenderText_Solid(gameEnv->mainMenu.font.font, txt, color);
+	SDL_Surface *surface = TTF_RenderText_Solid(getFont("arial.ttf")->large, txt, color);
 	SDL_Texture *texture = SDL_CreateTextureFromSurface(gameEnv->sdl.renderer, surface);
 	SDL_SetRenderDrawColor(gameEnv->sdl.renderer, bgColor.r, bgColor.g, bgColor.b, bgColor.a);
 	int texW=0, texH=0;

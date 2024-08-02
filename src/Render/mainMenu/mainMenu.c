@@ -7,7 +7,7 @@ int	showMainMenu(){
 		SDL_SetRenderDrawColor(gameEnv->sdl.renderer, 0, 0, 0, 255);
 		SDL_RenderClear(gameEnv->sdl.renderer);
 		for (int i = 0; i < 3; i++) {
-			renderButton(gameEnv->sdl.renderer, gameEnv->mainMenu.menuButtons[i], gameEnv->mainMenu.font.font);
+			renderButton(gameEnv->sdl.renderer, gameEnv->mainMenu.menuButtons[i], getFont("arial.ttf")->large);
 		}
 		SDL_RenderPresent(gameEnv->sdl.renderer);
 		SDL_Delay(300);
